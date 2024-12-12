@@ -1,0 +1,39 @@
+
+<script lang="ts">
+    // Define the message prop
+    export let message: string;
+</script>
+
+<div class="loading-dialog">
+    <div class="loading-spinner"></div>
+    <div class="loading-message">{message}</div>
+</div>
+
+<style>
+.loading-dialog {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--b3-theme-background);
+    border-top: 3px solid var(--b3-theme-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-message {
+    font-size: 14px;
+    color: var(--b3-theme-on-background);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>

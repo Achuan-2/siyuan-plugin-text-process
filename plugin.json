@@ -1,0 +1,44 @@
+{
+  "name": "siyuan-plugin-paste-process",
+  "author": "Achuan-2",
+  "url": "https://github.com/Achuan-2/siyuan-plugin-paste-process",
+  "version": "0.0.1",
+  "minAppVersion": "3.0.12",
+  "backends": [
+    "windows",
+    "linux",
+    "darwin",
+    "docker",
+    "ios",
+    "android"
+  ],
+  "frontends": [
+    "desktop",
+    "mobile",
+    "browser-desktop",
+    "browser-mobile",
+    "desktop-window"
+  ],
+  "displayName": {
+    "en_US": "Paste Process",
+    "zh_CN": "粘贴优化"
+  },
+  "description": {
+    "en_US": "SiYuan plugin sample with vite and svelte",
+    "zh_CN": "自动对latex数学公式处理、自动去除空格、去除换行等功能"
+  },
+  "readme": {
+    "en_US": "README.md",
+    "zh_CN": "README_zh_CN.md"
+  },
+  "funding": {
+    "custom": [
+      ""
+    ]
+  },
+  "keywords": [
+    "plugin",
+    "sample",
+    "插件样例"
+  ]
+}
