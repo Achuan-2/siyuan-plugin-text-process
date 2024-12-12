@@ -118,7 +118,8 @@ export default class PluginSample extends Plugin {
             icon: this.data[STORAGE_NAME].latexConversion ? "iconSelect" : "iconClose",
             label: this.i18n.latexConversion,
             click: (detail, event) => {
-                event.stopPropagation(); // Prevent menu from closing
+                event.preventDefault();
+                event.stopPropagation();
                 this.toggleOption("latexConversion", detail);
             }
         });
@@ -126,7 +127,8 @@ export default class PluginSample extends Plugin {
             icon: this.data[STORAGE_NAME].removeNewlines ? "iconSelect" : "iconClose",
             label: this.i18n.removeNewlines,
             click: (detail, event) => {
-                event.stopPropagation(); // Prevent menu from closing
+                event.preventDefault();
+                event.stopPropagation();
                 this.toggleOption("removeNewlines", detail);
             }
         });
@@ -134,7 +136,8 @@ export default class PluginSample extends Plugin {
             icon: this.data[STORAGE_NAME].removeSpaces ? "iconSelect" : "iconClose",
             label: this.i18n.removeSpaces,
             click: (detail, event) => {
-                event.stopPropagation(); // Prevent menu from closing
+                event.preventDefault();
+                event.stopPropagation();
                 this.toggleOption("removeSpaces", detail);
             }
         });
