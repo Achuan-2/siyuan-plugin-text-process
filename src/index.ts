@@ -58,9 +58,12 @@ export default class PluginSample extends Plugin {
         // 如果需异步处理请调用 preventDefault， 否则会进行默认处理
         event.preventDefault();
         // 如果使用了 preventDefault，必须调用 resolve，否则程序会卡死
+        let text = event.detail.textPlain;
+        text = text.replace(/\\\[(.*?)\\\]/g, '$$$$$1$$$$'); // latex 行间数学公式块
+        text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // latex 行内数学公式
         event.detail.resolve({
             // 把laxtex公式变为markdown数学公式
-            textPlain: event.detail.textPlain.replace(/\\\[(.*?)\\\]/g, '$$$$$1$$$$')
+            textPlain: text
         });
     }
 }
