@@ -116,27 +116,26 @@ export default class PluginSample extends Plugin {
         const menu = new Menu("pasteProcess", () => {});
         menu.addItem({
             icon: this.data[STORAGE_NAME].latexConversion ? "iconSelect" : "iconClose",
-            label: "Latex公式自动转换",
+            label: this.i18n.latexConversion,
             click: (detail, event) => {
-                event.preventDefault(); // Prevent menu from closing
+                event.stopPropagation(); // Prevent menu from closing
                 this.toggleOption("latexConversion", detail);
             }
         });
         menu.addItem({
             icon: this.data[STORAGE_NAME].removeNewlines ? "iconSelect" : "iconClose",
-            label: "去除换行",
+            label: this.i18n.removeNewlines,
             click: (detail, event) => {
-                event.preventDefault(); // Prevent menu from closing
+                event.stopPropagation(); // Prevent menu from closing
                 this.toggleOption("removeNewlines", detail);
             }
         });
         menu.addItem({
             icon: this.data[STORAGE_NAME].removeSpaces ? "iconSelect" : "iconClose",
-            label: "去除空格",
+            label: this.i18n.removeSpaces,
             click: (detail, event) => {
-                event.preventDefault(); // Prevent menu from closing
+                event.stopPropagation(); // Prevent menu from closing
                 this.toggleOption("removeSpaces", detail);
-                
             }
         });
         if (this.isMobile) {

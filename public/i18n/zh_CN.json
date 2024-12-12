@@ -1,3 +1,6 @@
 {
-    "addTopBarIcon": "粘贴时自动处理"
+    "addTopBarIcon": "粘贴时自动处理",
+    "latexConversion": "Latex公式自动转换",
+    "removeNewlines": "去除换行",
+    "removeSpaces": "去除空格"
 }

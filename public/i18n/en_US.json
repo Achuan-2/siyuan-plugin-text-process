@@ -1,3 +1,6 @@
 {
-    "addTopBarIcon": "Paste Process"
+    "addTopBarIcon": "Paste Process",
+    "latexConversion": "Latex Conversion",
+    "removeNewlines": "Remove Newlines",
+    "removeSpaces": "Remove Spaces"
 }
