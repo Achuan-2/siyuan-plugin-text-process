@@ -21,7 +21,7 @@
   ],
   "displayName": {
     "en_US": "Paste Process",
-    "zh_CN": "粘贴优化"
+    "zh_CN": "粘贴时自动处理"
   },
   "description": {
     "en_US": "SiYuan plugin sample with vite and svelte",
