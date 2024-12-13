@@ -42,7 +42,8 @@ export default class PluginSample extends Plugin {
         this.data[STORAGE_NAME] = {
             latexConversion: false,
             removeNewlines: false,
-            removeSpaces: false
+            removeSpaces: false,
+            removeEmptyLines: false // 新增去除空行选项
         }
         await this.loadData(STORAGE_NAME);
         console.log(this.data[STORAGE_NAME]);
@@ -96,6 +97,7 @@ export default class PluginSample extends Plugin {
         // 如果使用了 preventDefault，必须调用 resolve，否则程序会卡死
         console.log(this.data[STORAGE_NAME])
         let text = event.detail.textPlain;
+        let html = event.detail.textHTML;
         if (this.data[STORAGE_NAME].latexConversion) {
             console.log()
             text = text.replace(/\\\[(.*?)\\\]/g, '$$$$$1$$$$'); // latex 行间数学公式块
@@ -103,12 +105,22 @@ export default class PluginSample extends Plugin {
         }
         if (this.data[STORAGE_NAME].removeNewlines) {
             text = text.replace(/\n/g, ''); // 去除换行
+            // html 把br和\n替换为空字符
+            html = html.replace(/<br>/g, ''); // 去除换行
+            // html 把p标签的内容都合并为一个
+            html = html.replace(/<\/p><p[^>]*>/g, ''); // 合并p标签内容
         }
         if (this.data[STORAGE_NAME].removeSpaces) {
             text = text.replace(/\s/g, ''); // 去除空格
+            html = html.replace(/\s/g, ''); // 去除空格
+        }
+        if (this.data[STORAGE_NAME].removeEmptyLines) {
+            text = text.replace(/^\s*[\r\n]/gm, ''); // 去除空行
+            html = html.replace(/<\/p><p[^>]*>/g, '</br>'); // 合并p标签内容
         }
         event.detail.resolve({
-            textPlain: text
+            textPlain: text,
+            textHTML: html
         });
     }
 
@@ -141,6 +153,15 @@ export default class PluginSample extends Plugin {
                 this.toggleOption("removeSpaces", detail);
             }
         });
+        menu.addItem({
+            icon: this.data[STORAGE_NAME].removeEmptyLines ? "iconSelect" : "iconClose",
+            label: this.i18n.removeEmptyLines,
+            click: (detail, event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.toggleOption("removeEmptyLines", detail);
+            }
+        });
         if (this.isMobile) {
             menu.fullscreen();
         } else {
@@ -166,7 +187,7 @@ export default class PluginSample extends Plugin {
     }
 
     private updateTopBarBackground() {
-        if (this.data[STORAGE_NAME].latexConversion || this.data[STORAGE_NAME].removeNewlines || this.data[STORAGE_NAME].removeSpaces) {
+        if (this.data[STORAGE_NAME].latexConversion || this.data[STORAGE_NAME].removeNewlines || this.data[STORAGE_NAME].removeSpaces || this.data[STORAGE_NAME].removeEmptyLines) {
             this.topBarElement.style.backgroundColor = "var(--b3-toolbar-hover)";
         } else {
             this.topBarElement.style.backgroundColor = "";
