@@ -19,7 +19,7 @@ import {
     ICardData
 } from "siyuan";
 
-import { appendBlock, deleteBlock, setBlockAttrs, getBlockAttrs, pushMsg, pushErrMsg, sql, renderSprig, getChildBlocks, insertBlock, renameDocByID, prependBlock, updateBlock, createDocWithMd, getDoc, getBlockKramdown, getBlockDOM } from "./api";
+import { appendBlock, deleteBlock, setBlockAttrs, getBlockAttrs, pushMsg, pushErrMsg, sql, refreshSql, renderSprig, getChildBlocks, insertBlock, renameDocByID, prependBlock, updateBlock, createDocWithMd, getDoc, getBlockKramdown, getBlockDOM } from "./api";
 import "@/index.scss";
 
 import SettingExample from "@/setting-example.svelte";
@@ -264,9 +264,30 @@ export default class PluginSample extends Plugin {
                         const sqlResult = await sql(`SELECT content FROM blocks WHERE id = '${blockId}'`);
                         if (sqlResult && sqlResult.length > 0) {
                             const content = sqlResult[0].content;
-                            // Replace single newlines with double newlines
-                            const updatedContent = content.replace(/(?<!\n)\n(?!\n)/g, '\n\n');
-                            await updateBlock('markdown', blockId, updatedContent);
+                            // Split content into lines
+                            const lines = content.split('\n');
+                            if (lines.length > 1) {
+                                // Update original block with first line
+                                await updateBlock('markdown', lines[0], blockId);
+                                // Insert remaining lines as new blocks
+                                let previousId = blockId;
+                                for (let i = 1; i < lines.length; i++) {
+                                    if (lines[i].trim()) { // Skip empty lines
+                                        
+                                        // const newBlock = await insertBlock(
+                                        //     'markdown',
+                                        //     lines[i],
+                                        //     null, // parentId
+                                        //     previousId, // previousId
+                                        //     null // nextId
+                                        // );
+                                        const newBlock = await appendBlock('markdown', lines[i], previousId)
+                                        if (newBlock) {
+                                            previousId = newBlock[0].doOperations[0].id;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 } catch (e) {
@@ -287,7 +308,7 @@ export default class PluginSample extends Plugin {
                             const content = sqlResult[0].content;
                             // Replace bullet points with markdown list syntax
                             const updatedContent = content.replace(/•/g, '- ');
-                            await updateBlock('markdown', blockId, updatedContent);
+                            await updateBlock('markdown', updatedContent, blockId);
                         }
                     }
                 } catch (e) {
