@@ -3,5 +3,6 @@
     "latexConversion": "Latex Conversion",
     "removeNewlines": "Remove Newlines",
     "removeSpaces": "Remove Spaces",
-    "removeEmptyLines": "Remove Empty Lines"
+    "removeEmptyLines": "Remove Empty Lines",
+    "addEmptyLines": "Add Empty Lines"
 }

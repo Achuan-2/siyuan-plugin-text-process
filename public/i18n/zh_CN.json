@@ -3,5 +3,6 @@
     "latexConversion": "Latex公式自动转换",
     "removeNewlines": "去除换行",
     "removeSpaces": "去除空格",
-    "removeEmptyLines": "去除空行"
+    "removeEmptyLines": "去除空行",
+    "addEmptyLines": "添加空行"
 }
