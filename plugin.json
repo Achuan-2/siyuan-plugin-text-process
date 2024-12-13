@@ -1,7 +1,7 @@
 {
-  "name": "siyuan-plugin-paste-process",
+  "name": "siyuan-plugin-text-process",
   "author": "Achuan-2",
-  "url": "https://github.com/Achuan-2/siyuan-plugin-paste-process",
+  "url": "https://github.com/Achuan-2/siyuan-plugin-text-process",
   "version": "0.0.1",
   "minAppVersion": "3.0.12",
   "backends": [
@@ -20,12 +20,12 @@
     "desktop-window"
   ],
   "displayName": {
-    "en_US": "Paste Process",
-    "zh_CN": "粘贴时自动处理"
+    "en_US": "Text Process",
+    "zh_CN": "文本处理"
   },
   "description": {
     "en_US": "SiYuan plugin sample with vite and svelte",
-    "zh_CN": "自动对latex数学公式处理、自动去除空格、去除换行等功能"
+    "zh_CN": "粘贴时自动处理，块标添加合并块、分割块等功能"
   },
   "readme": {
     "en_US": "README.md",
