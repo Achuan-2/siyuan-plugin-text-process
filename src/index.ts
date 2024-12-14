@@ -295,11 +295,21 @@ export default class PluginSample extends Plugin {
                 try {
                     for (const block of detail.blockElements) {
                         const blockId = block.dataset.nodeId;
-                        const sqlResult = await sql(`SELECT content FROM blocks WHERE id = '${blockId}'`);
-                        if (sqlResult && sqlResult.length > 0) {
-                            const content = sqlResult[0].content;
+                        const content = (await getBlockKramdown(blockId)).kramdown;
+                        console.log(content)
+                        if (content && content.length > 0) {
                             // Split content into lines
-                            const lines = content.split('\n');
+                            function cleanText(text) {
+                                return text
+                                    .split('\n')
+                                    .map(line => line.replace(/\{:[^}]+\}/g, '').trim())
+                                    .filter(line => line) // 移除空行
+                                    .join('\n');
+                            }
+
+                            let contentClean = cleanText(content);
+                            const lines = contentClean.split('\n');
+                            console.log(lines);
                             if (lines.length > 1) {
                                 // Update original block with first line
                                 await updateBlock('markdown', lines[0], blockId);
@@ -307,7 +317,8 @@ export default class PluginSample extends Plugin {
                                 let previousId = blockId;
                                 for (let i = 1; i < lines.length; i++) {
                                     if (lines[i].trim()) { // Skip empty lines
-                                        const newBlock = await appendBlock('markdown', lines[i], previousId)
+                                        await refreshSql();
+                                        const newBlock = await insertBlock('markdown', lines[i], null, previousId,null)
                                         if (newBlock) {
                                             previousId = newBlock[0].doOperations[0].id;
                                         }
