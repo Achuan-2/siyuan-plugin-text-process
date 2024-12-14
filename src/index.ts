@@ -131,12 +131,11 @@ export default class PluginSample extends Plugin {
             html = html.replace(/(<br>)(?!<br>)/g, '$1<br>'); // 添加空行，只匹配只有一个<br>的
         }
         if (this.data[STORAGE_NAME].pptList) {
-            text = text.replace(/•/g, '- ');// 富文本列表符号转markdown列表
-            html = html.replace(/•/g, '- ');// 富文本列表符号转markdown列表
+            text = text.replace(/[•○▪▫◆◇►▻❖✦✴✿❀⚪☐][\s]*/g, '- ');// 富文本列表符号转markdown列表
             // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
             console.log("1")
             html = this.convertOfficeListToHtml(html);
-            console.log(html);
+            // console.log(html);
 
         }
         event.detail.resolve({
@@ -147,7 +146,7 @@ export default class PluginSample extends Plugin {
     private convertOfficeListToHtml(htmlString, type = 'auto') {
         // 自动检测文档类型
         const isWord = htmlString.includes('mso-list:l0 level');
-        const isPpt = htmlString.includes('mso-special-format:bullet');
+        const isPpt = htmlString.includes('mso-special-format');
 
         // 如果没有检测到任何列表结构，直接返回原始HTML
         if (!isWord && !isPpt) {
@@ -165,52 +164,81 @@ export default class PluginSample extends Plugin {
             case 'word':
                 return isWord ? this.convertWordListToHtml(htmlString) : htmlString;
             case 'ppt':
-                return isPpt ? this.convertPptListToHtml(htmlString) : htmlString;
+                return isPpt ? this.convertPPTListToHtml(htmlString) : htmlString;
             default:
                 return htmlString;
         }
     }
 
     private convertWordListToHtml(htmlString) {
-        // 创建一个DOM解析器
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
 
-        // 找到所有元素
         const elements = Array.from(doc.body.children);
         const result = [];
         let listElements = [];
 
-        // 处理连续的列表
+        // 判断列表类型
+        function determineListType(element) {
+            const listMarker = element.querySelector('span[style*="mso-list:Ignore"]');
+            if (!listMarker) return 'ul'; // 默认无序列表
+
+            // 获取列表标记的实际文本内容
+            const markerText = listMarker.textContent.trim();
+
+            // 检查是否为有序列表的常见标记
+            // const isOrderedList = /^[0-9]+[.)]|^[a-zA-Z][.)]/.test(markerText);
+            const isOrderedList = markerText.length > 1;
+            return isOrderedList ? 'ol' : 'ul';
+        }
+
+        // 处理连续的列表组
         function processListGroup(elements) {
             if (elements.length === 0) return '';
 
             const fragment = document.createDocumentFragment();
-            let currentUl = null;
+            let currentList = null;
             let previousLevel = 0;
+            let listStack = []; // 用于跟踪列表类型
 
             elements.forEach(p => {
                 const style = p.getAttribute('style') || '';
                 const levelMatch = style.match(/level(\d+)/);
                 const currentLevel = parseInt(levelMatch[1]);
+                const listType = determineListType(p);
 
-                if (!currentUl) {
-                    // 创建第一个ul
-                    currentUl = document.createElement('ul');
-                    fragment.appendChild(currentUl);
+                if (!currentList) {
+                    // 创建第一个列表
+                    currentList = document.createElement(listType);
+                    fragment.appendChild(currentList);
+                    listStack.push({ element: currentList, type: listType });
                 } else if (currentLevel > previousLevel) {
-                    // 需要创建新的嵌套ul
-                    const newUl = document.createElement('ul');
-                    currentUl.lastElementChild.appendChild(newUl);
-                    currentUl = newUl;
+                    // 创建新的嵌套列表
+                    const newList = document.createElement(listType);
+                    currentList.lastElementChild.appendChild(newList);
+                    currentList = newList;
+                    listStack.push({ element: currentList, type: listType });
                 } else if (currentLevel < previousLevel) {
-                    // 需要返回上层ul
+                    // 返回上层列表
                     for (let i = 0; i < previousLevel - currentLevel; i++) {
-                        currentUl = currentUl.parentElement.parentElement;
+                        listStack.pop();
+                        currentList = listStack[listStack.length - 1].element;
                     }
+                } else if (currentLevel === previousLevel && listType !== listStack[listStack.length - 1].type) {
+                    // 同级但列表类型不同，创建新列表
+                    const newList = document.createElement(listType);
+                    if (listStack.length > 1) {
+                        // 如果在嵌套中，添加到父列表项
+                        currentList.parentElement.parentElement.appendChild(newList);
+                    } else {
+                        // 顶层列表，直接添加到片段
+                        fragment.appendChild(newList);
+                    }
+                    currentList = newList;
+                    listStack[listStack.length - 1] = { element: currentList, type: listType };
                 }
 
-                // 创建li元素并保持原有内容
+                // 创建列表项
                 const li = document.createElement('li');
                 const pClone = p.cloneNode(true);
                 // 删除Word特有的列表标记
@@ -218,7 +246,7 @@ export default class PluginSample extends Plugin {
                     span.remove();
                 });
                 li.innerHTML = pClone.innerHTML;
-                currentUl.appendChild(li);
+                currentList.appendChild(li);
 
                 previousLevel = currentLevel;
             });
@@ -229,25 +257,22 @@ export default class PluginSample extends Plugin {
         }
 
         // 遍历所有元素
-        elements.forEach((element, index) => {
+        elements.forEach((element) => {
             const style = element.getAttribute('style') || '';
             const isListItem = style.includes('level') && style.includes('mso-list:');
 
             if (isListItem) {
-                // 收集列表元素
                 listElements.push(element);
             } else {
-                // 如果有待处理的列表元素，先处理它们
                 if (listElements.length > 0) {
                     result.push(processListGroup(listElements));
                     listElements = [];
                 }
-                // 保持非列表元素不变
                 result.push(element.outerHTML);
             }
         });
 
-        // 处理最后一组列表元素（如果有的话）
+        // 处理最后一组列表元素
         if (listElements.length > 0) {
             result.push(processListGroup(listElements));
         }
@@ -257,7 +282,8 @@ export default class PluginSample extends Plugin {
 
 
 
-    private convertPptListToHtml(htmlString) {
+
+    private convertPPTListToHtml(htmlString) {
         // 创建一个DOM解析器
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
@@ -267,44 +293,73 @@ export default class PluginSample extends Plugin {
         const result = [];
         let listElements = [];
 
-        // 处理连续的列表
+        // 判断列表类型
+        function determineListType(element) {
+            const bulletSpan = element.querySelector('span[style*="mso-special-format"]');
+            if (!bulletSpan) return 'ul'; // 默认无序列表
+
+            const style = bulletSpan.getAttribute('style') || '';
+            // PPT中有序列表通常包含"numbullet"
+            const isOrderedList = style.includes('numbullet');
+            console.log(isOrderedList);
+            return isOrderedList ? 'ol' : 'ul';
+        }
+
+        // 处理连续的列表组
         function processListGroup(elements) {
             if (elements.length === 0) return '';
 
             const fragment = document.createDocumentFragment();
-            let currentUl = null;
+            let currentList = null;
             let previousMargin = 0;
+            let listStack = []; // 用于跟踪列表类型
 
             elements.forEach(div => {
                 const style = div.getAttribute('style') || '';
                 const marginMatch = style.match(/margin-left:([.\d]+)in/);
                 const currentMargin = parseFloat(marginMatch[1]);
+                const listType = determineListType(div);
 
-                if (!currentUl) {
-                    // 创建第一个ul
-                    currentUl = document.createElement('ul');
-                    fragment.appendChild(currentUl);
+                if (!currentList) {
+                    // 创建第一个列表
+                    currentList = document.createElement(listType);
+                    fragment.appendChild(currentList);
+                    listStack.push({ element: currentList, type: listType, margin: currentMargin });
                 } else if (currentMargin > previousMargin) {
-                    // 需要创建新的嵌套ul
-                    const newUl = document.createElement('ul');
-                    currentUl.lastElementChild.appendChild(newUl);
-                    currentUl = newUl;
+                    // 创建新的嵌套列表
+                    const newList = document.createElement(listType);
+                    currentList.lastElementChild.appendChild(newList);
+                    currentList = newList;
+                    listStack.push({ element: currentList, type: listType, margin: currentMargin });
                 } else if (currentMargin < previousMargin) {
-                    // 需要返回上层ul
-                    const levels = Math.round((previousMargin - currentMargin) / 0.5);
-                    for (let i = 0; i < levels; i++) {
-                        currentUl = currentUl.parentElement.parentElement;
+                    // 返回上层列表
+                    while (listStack.length > 0 && listStack[listStack.length - 1].margin > currentMargin) {
+                        listStack.pop();
                     }
+                    currentList = listStack[listStack.length - 1].element;
+                } else if (currentMargin === previousMargin && listType !== listStack[listStack.length - 1].type) {
+                    // 同级但列表类型不同，创建新列表
+                    const newList = document.createElement(listType);
+                    if (listStack.length > 1) {
+                        // 如果在嵌套中，添加到父列表项
+                        currentList.parentElement.parentElement.appendChild(newList);
+                    } else {
+                        // 顶层列表，直接添加到片段
+                        fragment.appendChild(newList);
+                    }
+                    currentList = newList;
+                    listStack[listStack.length - 1] = { element: currentList, type: listType, margin: currentMargin };
                 }
 
-                // 创建li元素并保持原有内容
+                // 创建列表项
                 const li = document.createElement('li');
                 const divClone = div.cloneNode(true);
-                divClone.querySelectorAll('span[style*="mso-special-format:bullet"]').forEach(span => {
+                // 删除PPT特有的列表标记
+                divClone.querySelectorAll('span[style*="mso-special-format"]').forEach(span => {
                     span.remove();
                 });
                 li.innerHTML = divClone.innerHTML;
-                currentUl.appendChild(li);
+                currentList.appendChild(li);
 
                 previousMargin = currentMargin;
             });
@@ -315,9 +370,9 @@ export default class PluginSample extends Plugin {
         }
 
         // 遍历所有元素
-        elements.forEach((element, index) => {
+        elements.forEach((element) => {
             const style = element.getAttribute('style') || '';
-            const hasBullet = element.querySelector('span[style*="mso-special-format:bullet"]');
+            const hasBullet = element.querySelector('span[style*="mso-special-format"]');
 
             if (hasBullet && style.includes('margin-left')) {
                 // 收集列表元素
@@ -333,7 +388,7 @@ export default class PluginSample extends Plugin {
             }
         });
 
-        // 处理最后一组列表元素（如果有的话）
+        // 处理最后一组列表元素
         if (listElements.length > 0) {
             result.push(processListGroup(listElements));
         }
@@ -518,7 +573,7 @@ export default class PluginSample extends Plugin {
                         if (sqlResult && sqlResult.length > 0) {
                             const content = sqlResult[0].content;
                             // Replace bullet points with markdown list syntax
-                            const updatedContent = content.replace(/•/g, '- ');
+                            const updatedContent = content.replace(/[•○▪▫◆◇►▻❖✦✴✿❀⚪☐][\s]*/g, '- ');
                             await updateBlock('markdown', updatedContent, blockId);
                         }
                     }
