@@ -12,9 +12,19 @@
         "mergeBlocks": "Merge Blocks",
         "splitBlocks": "Split Blocks",
         "copyFirstLevel": "Copy First Level List Items",
+        "copyMultiLevel": "Copy Multi Level List Items",
         "convertToMarkdownList": "Convert to Markdown List"
     },
     "messages": {
         "firstLevelCopied": "First level items copied to clipboard"
+    },
+    "settings": {
+        "copyFirstLevelSymbol":{
+            "title": "Symbol for converting list to plain text",
+            "description": "For example:</br> emoji：✨✅⭐️💡⚡️</br> symbol：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
+        },
+        "copyMultiLevelSymbol": {
+            "title": "Symbol for converting list to plain text (multi-level)",
+            "description": "Enter multiple symbols, different symbols will be used according to the level</br> For example:</br> emoji：✨✅⭐️💡⚡️</br> symbol：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
     }
 }

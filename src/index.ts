@@ -22,18 +22,16 @@ import {
 import { appendBlock, deleteBlock, setBlockAttrs, getBlockAttrs, pushMsg, pushErrMsg, sql, refreshSql, renderSprig, getChildBlocks, insertBlock, renameDocByID, prependBlock, updateBlock, createDocWithMd, getDoc, getBlockKramdown, getBlockDOM } from "./api";
 import "@/index.scss";
 
-import SettingExample from "@/setting-example.svelte";
 
 import { SettingUtils } from "./libs/setting-utils";
-import { svelteDialog } from "./libs/dialog";
 import { convertOfficeListToHtml } from "./utils/list-converter";
 
 const STORAGE_NAME = "config";
+const SETTINGS_NAME = "settings";
 
-export default class PluginSample extends Plugin {
+export default class PluginText extends Plugin {
     private isMobile: boolean;
     private settingUtils: SettingUtils;
-    private data: { [key: string]: any } = {};
     private topBarElement: HTMLElement;
 
     async onload() {
@@ -51,6 +49,26 @@ export default class PluginSample extends Plugin {
         await this.loadData(STORAGE_NAME);
         console.log(this.data[STORAGE_NAME]);
 
+        this.settingUtils = new SettingUtils({
+            plugin: this, name: SETTINGS_NAME
+        });
+
+
+        this.settingUtils.addItem({
+            key: "copyFirstLevelSymbol",
+            value: "■",
+            type: "textinput",
+            title: this.i18n.settings.copyFirstLevelSymbol.title,
+            description: this.i18n.settings.copyFirstLevelSymbol.description,
+        });
+        this.settingUtils.addItem({
+            key: "copyMultiLevelSymbol",
+            value: "💡■",
+            type: "textinput",
+            title: this.i18n.settings.copyMultiLevelSymbol.title,
+            description: this.i18n.settings.copyMultiLevelSymbol.description,
+        });
+        await this.settingUtils.load(); //导入配置并合并
         // 监听粘贴事件
         this.eventBus.on("paste", this.eventBusPaste.bind(this));
         const topBarElement = this.addTopBar({
@@ -132,8 +150,8 @@ export default class PluginSample extends Plugin {
             html = html.replace(/(<br>)(?!<br>)/g, '$1<br>'); // 添加空行，只匹配只有一个<br>的
         }
         if (this.data[STORAGE_NAME].pptList) {
-            text = text.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀⚪☐][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
-            html = html.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀⚪☐][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
+            text = text.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀✨⚪☐][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
+            html = html.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀✨⚪☐][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
             html = convertOfficeListToHtml(html);
 
@@ -223,7 +241,6 @@ export default class PluginSample extends Plugin {
     private async handleBlockMenu({ detail }) {
         let menu = detail.menu;
         const menuItems = [];
-
         // Only show merge option when multiple blocks are selected
         if (detail.blockElements && detail.blockElements.length > 1) {
             menuItems.push({
@@ -268,17 +285,21 @@ export default class PluginSample extends Plugin {
         // Add new condition for single list block
         if (detail.blockElements && detail.blockElements.length === 1) {
             const block = detail.blockElements[0];
+
             if (block.dataset.type === "NodeList") {
                 menuItems.push({
                     label: this.i18n.blockOperations.copyFirstLevel,
                     click: async () => {
                         try {
                             const blockId = block.dataset.nodeId;
-
-
+                            let listprefix = this.settingUtils.get("copyFirstLevelSymbol");
+                            if (listprefix.length === 0) {
+                                listprefix = '■';
+                            }
+                            console.log(listprefix);
                             // Get all top level list items·
                             const firstLevelItems = Array.from(document.querySelector(`[data-node-id="${blockId}"]`).querySelectorAll(':scope > .li > .p'))
-                                .map(li => `- ${li.textContent.trim()}`)
+                                .map(li => `${listprefix} ${li.textContent.trim()}`)
                                 .join('\n');
 
                             if (firstLevelItems) {
@@ -287,6 +308,53 @@ export default class PluginSample extends Plugin {
                             }
                         } catch (e) {
                             console.error('Error extracting first level items:', e);
+                        }
+                    }
+                });
+
+                // Add new menu item for multi-level list copying
+                menuItems.push({
+                    label: this.i18n.blockOperations.copyMultiLevel,
+                    click: async () => {
+                        try {
+                            const blockId = block.dataset.nodeId;
+                            const symbols = [...this.settingUtils.get("copyMultiLevelSymbol")];
+                            console.log(symbols);
+                            function getListItemLevel(element) {
+                                let level = 0;
+                                let parent = element.parentElement;
+                                while (parent) {
+                                    if (parent.classList.contains('list')) {
+                                        level++;
+                                    }
+                                    parent = parent.parentElement;
+                                }
+                                return level - 1; // Adjust level count
+                            }
+
+                            function getSymbolForLevel(level, symbols) {
+                                if (symbols.length === 0) return '■';
+                                return symbols[level % symbols.length];
+                            }
+
+                            const listItems = document.querySelector(`[data-node-id="${blockId}"]`)
+                                .querySelectorAll('.li > .p');
+                            
+                            const formattedList = Array.from(listItems)
+                                .map(item => {
+                                    const level = getListItemLevel(item);
+                                    const indent = '  '.repeat(level);
+                                    const symbol = getSymbolForLevel(level, symbols);
+                                    return `${symbol} ${item.textContent.trim()}`;
+                                })
+                                .join('\n');
+
+                            if (formattedList) {
+                                navigator.clipboard.writeText(formattedList);
+                                showMessage(this.i18n.messages.multiLevelCopied);
+                            }
+                        } catch (e) {
+                            console.error('Error copying multi-level list:', e);
                         }
                     }
                 });
@@ -346,7 +414,7 @@ export default class PluginSample extends Plugin {
                         const content = (await getBlockKramdown(blockId)).kramdown;
                         if (content && content.length > 0) {
                             // Replace bullet points with markdown list syntax
-                            const updatedContent = content.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀⚪☐][\s]*/g, '$1- ');
+                            const updatedContent = content.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✨✿❀⚪☐][\s]*/g, '$1- ');
                             await updateBlock('markdown', updatedContent, blockId);
                         }
                     }
@@ -357,6 +425,7 @@ export default class PluginSample extends Plugin {
         });
 
         menu.addItem({
+            icon: "iconPaste",
             label: "文本处理",
             submenu: menuItems
         });

@@ -11,10 +11,21 @@
     "blockOperations": {
         "mergeBlocks": "合并块",
         "splitBlocks": "拆分块",
-        "copyFirstLevel": "仅复制一级列表内容",
+        "copyFirstLevel": "列表转纯文本（仅复制一级列表）",
+        "copyMultiLevel": "列表转纯文本（复制多级列表）",
         "convertToMarkdownList": "列表符号转markdown列表"
     },
     "messages": {
         "firstLevelCopied": "已复制一级列表内容"
+    },
+    "settings": {
+        "copyFirstLevelSymbol":{
+            "title": "列表转纯文本的列表符号（仅复制一级列表）",
+            "description": "举例：</br> emoji：✨✅⭐️💡⚡️</br> 符号：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
+        },
+        "copyMultiLevelSymbol": {
+            "title": "列表转纯文本的列表符号（复制多级列表）",
+            "description": "输入多个符号，会根据层级来使用不同符号</br> 举例：</br> emoji：✨✅⭐️💡⚡️</br> 符号：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
+        }
     }
 }
