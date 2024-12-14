@@ -311,7 +311,7 @@ export default class PluginSample extends Plugin {
                             function cleanText(text) {
                                 return text
                                     .split('\n')
-                                    .map(line => line.replace(/\{:[^}]+\}/g, '').trim())
+                                    .map(line => line.replace(/^[\s]*\{:[^}]*id="[^"]*"[^}]*\}/g, '').trim())
                                     .filter(line => line) // 移除空行
                                     .join('\n');
                             }
