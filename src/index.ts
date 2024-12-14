@@ -101,8 +101,6 @@ export default class PluginSample extends Plugin {
         // 如果需异步处理请调用 preventDefault， 否则会进行默认处理
         event.preventDefault();
         // 如果使用了 preventDefault，必须调用 resolve，否则程序会卡死
-        // console.log(this.data[STORAGE_NAME])
-        console.log(event.detail)
         let text = event.detail.textPlain;
         let html = event.detail.textHTML;
         let siyuan = event.detail.siyuanHTML;
@@ -137,9 +135,7 @@ export default class PluginSample extends Plugin {
             text = text.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀⚪☐][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             html = html.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀⚪☐][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
-            console.log("1")
             html = convertOfficeListToHtml(html);
-            // console.log(html);
 
         }
         event.detail.resolve({
@@ -215,7 +211,6 @@ export default class PluginSample extends Plugin {
             useElement.setAttribute("xlink:href", "#iconClose");
         }
         this.updateTopBarBackground();
-        console.log(this.data[STORAGE_NAME]);
     }
 
     private updateTopBarBackground() {
@@ -227,7 +222,6 @@ export default class PluginSample extends Plugin {
     }
     private async handleBlockMenu({ detail }) {
         let menu = detail.menu;
-        console.log(detail.blockElements)
         const menuItems = [];
 
         // Only show merge option when multiple blocks are selected
@@ -252,7 +246,6 @@ export default class PluginSample extends Plugin {
 
                             let contentClean = cleanText(content);
                             if (contentClean && contentClean.length > 0) {
-                                console.log(contentClean)
                                 mergedContent += contentClean + '\n';
                             }
                         }
@@ -308,7 +301,6 @@ export default class PluginSample extends Plugin {
                     for (const block of detail.blockElements) {
                         const blockId = block.dataset.nodeId;
                         const content = (await getBlockKramdown(blockId)).kramdown;
-                        console.log(content)
                         if (content && content.length > 0) {
                             // Split content into lines
                             function cleanText(text) {
@@ -321,7 +313,6 @@ export default class PluginSample extends Plugin {
 
                             let contentClean = cleanText(content);
                             const lines = contentClean.split('\n');
-                            console.log(lines);
                             if (lines.length > 1) {
                                 // Update original block with first line
                                 await updateBlock('markdown', lines[0], blockId);
@@ -353,7 +344,6 @@ export default class PluginSample extends Plugin {
                     for (const block of detail.blockElements) {
                         const blockId = block.dataset.nodeId;
                         const content = (await getBlockKramdown(blockId)).kramdown;
-                        console.log(content)
                         if (content && content.length > 0) {
                             // Replace bullet points with markdown list syntax
                             const updatedContent = content.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀⚪☐][\s]*/g, '$1- ');
