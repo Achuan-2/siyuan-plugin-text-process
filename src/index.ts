@@ -239,9 +239,18 @@ export default class PluginSample extends Plugin {
                         // Gather content from all blocks using SQL
                         for (const block of detail.blockElements) {
                             const blockId = block.dataset.nodeId;
-                            const sqlResult = await sql(`SELECT content FROM blocks WHERE id = '${blockId}'`);
-                            if (sqlResult && sqlResult.length > 0) {
-                                mergedContent += sqlResult[0].content + '\n';
+                            const content = (await getBlockKramdown(blockId)).kramdown;
+                            // Split content into lines
+                            function cleanText(text) {
+                                let lines = text.split('\n');
+                                lines.pop(); // Remove last line
+                                return lines.join('\n');
+                            }
+
+                            let contentClean = cleanText(content);
+                            if (contentClean && contentClean.length > 0) {
+                                console.log(contentClean)
+                                mergedContent += contentClean + '\n';
                             }
                         }
 
