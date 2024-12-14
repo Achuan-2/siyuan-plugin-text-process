@@ -276,7 +276,7 @@ export async function getBlockKramdown(id: BlockId, mode: string = 'md'): Promis
         mode: mode
     }
     let url = '/api/block/getBlockKramdown';
-    return request(url, data);
+    return request(url, data); // result：data.kramdown
 }
 export async function getBlockDOM(id: BlockId) {
     let data = {
