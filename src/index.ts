@@ -341,19 +341,21 @@ export default class PluginText extends Plugin {
 
                             function getListItemInfo(element) {
                                 let level = 0;
-                                let counters = new Map(); // Track ordered list counters for each level
-                                let listTypes = []; // Track list types (ordered/unordered) for each level
+                                let counters = new Map();
+                                let listTypes = [];
+                                
+                                // Get the root list element (selected block)
+                                const rootList = document.querySelector(`[data-node-id="${blockId}"]`);
                                 
                                 // Traverse up to collect list types and calculate level
                                 let parent = element.parentElement;
-                                while (parent) {
+                                while (parent && !parent.isSameNode(rootList.parentElement)) {
                                     if (parent.classList.contains('list')) {
                                         level++;
                                         const isOrdered = parent.getAttribute('data-subtype') === 'o';
-                                        listTypes.unshift(isOrdered); // Add to front of array
+                                        listTypes.unshift(isOrdered);
                                         
                                         if (isOrdered) {
-                                            // For ordered lists, find position within parent
                                             let count = 1;
                                             let sibling = element.closest('.li');
                                             while (sibling.previousElementSibling) {

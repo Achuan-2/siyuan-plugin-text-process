@@ -16,7 +16,8 @@
         "convertToMarkdownList": "Convert to Markdown List"
     },
     "messages": {
-        "firstLevelCopied": "First level items copied to clipboard"
+        "firstLevelCopied": "First level items copied to clipboard",
+        "multiLevelCopied": "Multi level items copied to clipboard",
     },
     "settings": {
         "copyFirstLevelSymbol":{

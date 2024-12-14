@@ -16,7 +16,8 @@
         "convertToMarkdownList": "列表符号转markdown列表"
     },
     "messages": {
-        "firstLevelCopied": "已复制一级列表内容"
+        "firstLevelCopied": "已复制一级列表内容",
+        "multiLevelCopied": "已复制多级列表内容"
     },
     "settings": {
         "copyFirstLevelSymbol":{
