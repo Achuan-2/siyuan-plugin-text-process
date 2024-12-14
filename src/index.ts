@@ -134,7 +134,8 @@ export default class PluginSample extends Plugin {
             text = text.replace(/•/g, '- ');// 富文本列表符号转markdown列表
             html = html.replace(/•/g, '- ');// 富文本列表符号转markdown列表
             // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
-            html = this.convertWordListToHtml(html);
+            console.log("1")
+            html = this.convertOfficeListToHtml(html);
             console.log(html);
 
         }
@@ -143,33 +144,54 @@ export default class PluginSample extends Plugin {
             textHTML: html,
         });
     }
+    private convertOfficeListToHtml(htmlString, type = 'auto') {
+        // 自动检测文档类型
+        const isWord = htmlString.includes('mso-list:l0 level');
+        const isPpt = htmlString.includes('mso-special-format:bullet');
+
+        // 如果没有检测到任何列表结构，直接返回原始HTML
+        if (!isWord && !isPpt) {
+            return htmlString;
+        }
+
+        // 自动判断类型
+        if (type === 'auto') {
+            if (isWord) type = 'word';
+            else if (isPpt) type = 'ppt';
+        }
+
+        // 根据类型调用对应的处理函数
+        switch (type.toLowerCase()) {
+            case 'word':
+                return isWord ? this.convertWordListToHtml(htmlString) : htmlString;
+            case 'ppt':
+                return isPpt ? this.convertPptListToHtml(htmlString) : htmlString;
+            default:
+                return htmlString;
+        }
+    }
 
     private convertWordListToHtml(htmlString) {
         // 创建一个DOM解析器
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
 
-        // 先删除所有带有mso-list:Ignore的span元素
-        doc.querySelectorAll('span[style*="mso-list:Ignore"]').forEach(span => {
-            span.remove();
-        });
+        // 找到所有元素
+        const elements = Array.from(doc.body.children);
+        const result = [];
+        let listElements = [];
 
-        // 找到所有段落
-        const paragraphs = doc.querySelectorAll('p');
+        // 处理连续的列表
+        function processListGroup(elements) {
+            if (elements.length === 0) return '';
 
-        // 创建一个文档片段来存储结果
-        const fragment = document.createDocumentFragment();
+            const fragment = document.createDocumentFragment();
+            let currentUl = null;
+            let previousLevel = 0;
 
-        // 当前的ul元素栈，用于处理嵌套
-        let currentUl = null;
-        let previousLevel = 0;
-
-        paragraphs.forEach(p => {
-            const style = p.getAttribute('style') || '';
-            const levelMatch = style.match(/level(\d+)/);
-
-            if (levelMatch) {
-                // 这是一个列表项
+            elements.forEach(p => {
+                const style = p.getAttribute('style') || '';
+                const levelMatch = style.match(/level(\d+)/);
                 const currentLevel = parseInt(levelMatch[1]);
 
                 if (!currentUl) {
@@ -190,23 +212,136 @@ export default class PluginSample extends Plugin {
 
                 // 创建li元素并保持原有内容
                 const li = document.createElement('li');
-                li.innerHTML = p.innerHTML;
+                const pClone = p.cloneNode(true);
+                // 删除Word特有的列表标记
+                pClone.querySelectorAll('span[style*="mso-list:Ignore"]').forEach(span => {
+                    span.remove();
+                });
+                li.innerHTML = pClone.innerHTML;
                 currentUl.appendChild(li);
 
                 previousLevel = currentLevel;
+            });
+
+            const wrapper = document.createElement('div');
+            wrapper.appendChild(fragment);
+            return wrapper.innerHTML;
+        }
+
+        // 遍历所有元素
+        elements.forEach((element, index) => {
+            const style = element.getAttribute('style') || '';
+            const isListItem = style.includes('level') && style.includes('mso-list:');
+
+            if (isListItem) {
+                // 收集列表元素
+                listElements.push(element);
             } else {
-                // 不是列表项，直接添加
-                fragment.appendChild(p.cloneNode(true));
-                currentUl = null;
-                previousLevel = 0;
+                // 如果有待处理的列表元素，先处理它们
+                if (listElements.length > 0) {
+                    result.push(processListGroup(listElements));
+                    listElements = [];
+                }
+                // 保持非列表元素不变
+                result.push(element.outerHTML);
             }
         });
 
-        // 将处理后的内容转换回字符串
-        const resultDiv = document.createElement('div');
-        resultDiv.appendChild(fragment);
-        return resultDiv.innerHTML;
+        // 处理最后一组列表元素（如果有的话）
+        if (listElements.length > 0) {
+            result.push(processListGroup(listElements));
+        }
+
+        return result.join('\n');
     }
+
+
+
+    private convertPptListToHtml(htmlString) {
+        // 创建一个DOM解析器
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+
+        // 找到所有元素
+        const elements = Array.from(doc.body.children);
+        const result = [];
+        let listElements = [];
+
+        // 处理连续的列表
+        function processListGroup(elements) {
+            if (elements.length === 0) return '';
+
+            const fragment = document.createDocumentFragment();
+            let currentUl = null;
+            let previousMargin = 0;
+
+            elements.forEach(div => {
+                const style = div.getAttribute('style') || '';
+                const marginMatch = style.match(/margin-left:([.\d]+)in/);
+                const currentMargin = parseFloat(marginMatch[1]);
+
+                if (!currentUl) {
+                    // 创建第一个ul
+                    currentUl = document.createElement('ul');
+                    fragment.appendChild(currentUl);
+                } else if (currentMargin > previousMargin) {
+                    // 需要创建新的嵌套ul
+                    const newUl = document.createElement('ul');
+                    currentUl.lastElementChild.appendChild(newUl);
+                    currentUl = newUl;
+                } else if (currentMargin < previousMargin) {
+                    // 需要返回上层ul
+                    const levels = Math.round((previousMargin - currentMargin) / 0.5);
+                    for (let i = 0; i < levels; i++) {
+                        currentUl = currentUl.parentElement.parentElement;
+                    }
+                }
+
+                // 创建li元素并保持原有内容
+                const li = document.createElement('li');
+                const divClone = div.cloneNode(true);
+                divClone.querySelectorAll('span[style*="mso-special-format:bullet"]').forEach(span => {
+                    span.remove();
+                });
+                li.innerHTML = divClone.innerHTML;
+                currentUl.appendChild(li);
+
+                previousMargin = currentMargin;
+            });
+
+            const wrapper = document.createElement('div');
+            wrapper.appendChild(fragment);
+            return wrapper.innerHTML;
+        }
+
+        // 遍历所有元素
+        elements.forEach((element, index) => {
+            const style = element.getAttribute('style') || '';
+            const hasBullet = element.querySelector('span[style*="mso-special-format:bullet"]');
+
+            if (hasBullet && style.includes('margin-left')) {
+                // 收集列表元素
+                listElements.push(element);
+            } else {
+                // 如果有待处理的列表元素，先处理它们
+                if (listElements.length > 0) {
+                    result.push(processListGroup(listElements));
+                    listElements = [];
+                }
+                // 保持非列表元素不变
+                result.push(element.outerHTML);
+            }
+        });
+
+        // 处理最后一组列表元素（如果有的话）
+        if (listElements.length > 0) {
+            result.push(processListGroup(listElements));
+        }
+
+        return result.join('\n');
+    }
+
+
 
     private addMenu(rect?: DOMRect) {
         const menu = new Menu("pasteProcess", () => { });
