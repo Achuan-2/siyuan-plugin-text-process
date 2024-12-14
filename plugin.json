@@ -33,12 +33,17 @@
   },
   "funding": {
     "custom": [
-      ""
+      "https://www.yuque.com/achuan-2"
     ]
   },
   "keywords": [
-    "plugin",
-    "sample",
-    "插件样例"
+    "paste",
+    "文本处理",
+    "text process",
+    "合并块",
+    "拆分块",
+    "ppt列表粘贴",
+    "word列表粘贴",
+    "latex公式转换"
   ]
 }
