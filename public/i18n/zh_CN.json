@@ -20,11 +20,11 @@
     },
     "settings": {
         "copyFirstLevelSymbol":{
-            "title": "列表转纯文本的列表符号（仅复制一级列表）",
+            "title": "列表转纯文本的无序列表符号（仅复制一级列表）",
             "description": "举例：</br> emoji：✨✅⭐️💡⚡️</br> 符号：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
         },
         "copyMultiLevelSymbol": {
-            "title": "列表转纯文本的列表符号（复制多级列表）",
+            "title": "列表转纯文本的无序列表符号（复制多级列表）",
             "description": "输入多个符号，会根据层级来使用不同符号</br> 举例：</br> emoji：✨✅⭐️💡⚡️</br> 符号：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
         }
     }

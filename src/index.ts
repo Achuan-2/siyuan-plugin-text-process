@@ -150,8 +150,8 @@ export default class PluginText extends Plugin {
             html = html.replace(/(<br>)(?!<br>)/g, '$1<br>'); // 添加空行，只匹配只有一个<br>的
         }
         if (this.data[STORAGE_NAME].pptList) {
-            text = text.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀✨⚪☐][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
-            html = html.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀✨⚪☐][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
+            text = text.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
+            html = html.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
             html = convertOfficeListToHtml(html);
 
@@ -292,14 +292,27 @@ export default class PluginText extends Plugin {
                     click: async () => {
                         try {
                             const blockId = block.dataset.nodeId;
-                            let listprefix = this.settingUtils.get("copyFirstLevelSymbol");
-                            if (listprefix.length === 0) {
-                                listprefix = '■';
+                            const listprefix = this.settingUtils.get("copyFirstLevelSymbol");
+                            const defaultSymbol = '■';
+                            
+                            // Helper function to convert numbers to emoji digits
+                            function numberToEmoji(num) {
+                                const emojiDigits = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣'];
+                                return num.toString().split('').map(d => emojiDigits[parseInt(d)]).join('');
                             }
-                            console.log(listprefix);
-                            // Get all top level list items·
-                            const firstLevelItems = Array.from(document.querySelector(`[data-node-id="${blockId}"]`).querySelectorAll(':scope > .li > .p'))
-                                .map(li => `${listprefix} ${li.textContent.trim()}`)
+
+                            // Get root list element
+                            const rootList = document.querySelector(`[data-node-id="${blockId}"]`);
+                            const isOrdered = rootList.getAttribute('data-subtype') === 'o';
+                            
+                            // Get all top level list items
+                            const firstLevelItems = Array.from(rootList.querySelectorAll(':scope > .li > .p'))
+                                .map((li, index) => {
+                                    const prefix = isOrdered ? 
+                                        numberToEmoji(index + 1) : 
+                                        (listprefix || defaultSymbol);
+                                    return `${prefix} ${li.textContent.trim()}`;
+                                })
                                 .join('\n');
 
                             if (firstLevelItems) {
@@ -319,22 +332,55 @@ export default class PluginText extends Plugin {
                         try {
                             const blockId = block.dataset.nodeId;
                             const symbols = [...this.settingUtils.get("copyMultiLevelSymbol")];
-                            console.log(symbols);
-                            function getListItemLevel(element) {
+
+                            // Helper function to convert numbers to emoji digits
+                            function numberToEmoji(num) {
+                                const emojiDigits = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣'];
+                                return num.toString().split('').map(d => emojiDigits[parseInt(d)]).join('');
+                            }
+
+                            function getListItemInfo(element) {
                                 let level = 0;
+                                let counters = new Map(); // Track ordered list counters for each level
+                                let listTypes = []; // Track list types (ordered/unordered) for each level
+                                
+                                // Traverse up to collect list types and calculate level
                                 let parent = element.parentElement;
                                 while (parent) {
                                     if (parent.classList.contains('list')) {
                                         level++;
+                                        const isOrdered = parent.getAttribute('data-subtype') === 'o';
+                                        listTypes.unshift(isOrdered); // Add to front of array
+                                        
+                                        if (isOrdered) {
+                                            // For ordered lists, find position within parent
+                                            let count = 1;
+                                            let sibling = element.closest('.li');
+                                            while (sibling.previousElementSibling) {
+                                                count++;
+                                                sibling = sibling.previousElementSibling;
+                                            }
+                                            counters.set(level, count);
+                                        }
                                     }
                                     parent = parent.parentElement;
                                 }
-                                return level - 1; // Adjust level count
+                                return {
+                                    level: level - 1,
+                                    listTypes: listTypes,
+                                    counters: counters
+                                };
                             }
 
-                            function getSymbolForLevel(level, symbols) {
-                                if (symbols.length === 0) return '■';
-                                return symbols[level % symbols.length];
+                            function getSymbolForLevel(info) {
+                                const level = info.level;
+                                const listType = info.listTypes[level];
+                                
+                                if (listType) { // ordered list
+                                    return numberToEmoji(info.counters.get(level + 1));
+                                } else { // unordered list
+                                    return symbols.length === 0 ? '■' : symbols[level % symbols.length];
+                                }
                             }
 
                             const listItems = document.querySelector(`[data-node-id="${blockId}"]`)
@@ -342,9 +388,8 @@ export default class PluginText extends Plugin {
                             
                             const formattedList = Array.from(listItems)
                                 .map(item => {
-                                    const level = getListItemLevel(item);
-                                    const indent = '  '.repeat(level);
-                                    const symbol = getSymbolForLevel(level, symbols);
+                                    const info = getListItemInfo(item);
+                                    const symbol = getSymbolForLevel(info);
                                     return `${symbol} ${item.textContent.trim()}`;
                                 })
                                 .join('\n');
@@ -414,7 +459,7 @@ export default class PluginText extends Plugin {
                         const content = (await getBlockKramdown(blockId)).kramdown;
                         if (content && content.length > 0) {
                             // Replace bullet points with markdown list syntax
-                            const updatedContent = content.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✨✿❀⚪☐][\s]*/g, '$1- ');
+                            const updatedContent = content.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');
                             await updateBlock('markdown', updatedContent, blockId);
                         }
                     }
