@@ -132,7 +132,8 @@ export default class PluginSample extends Plugin {
             html = html.replace(/(<br>)(?!<br>)/g, '$1<br>'); // 添加空行，只匹配只有一个<br>的
         }
         if (this.data[STORAGE_NAME].pptList) {
-            text = text.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀⚪☐][\s]*/g, '- ');// 富文本列表符号转markdown列表
+            text = text.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀⚪☐][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
+            html = html.replace(/(^|\n)[•○▪▫◆◇►▻❖✦✴✿❀⚪☐][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
             console.log("1")
             html = convertOfficeListToHtml(html);
@@ -149,51 +150,43 @@ export default class PluginSample extends Plugin {
         const menu = new Menu("pasteProcess", () => { });
         menu.addItem({
             icon: this.data[STORAGE_NAME].latexConversion ? "iconSelect" : "iconClose",
-            label: this.i18n.latexConversion,
+            label: this.i18n.pasteOptions.latexConversion,
             click: (detail, event) => {
-
                 this.toggleOption("latexConversion", detail);
             }
         });
         menu.addItem({
             icon: this.data[STORAGE_NAME].removeNewlines ? "iconSelect" : "iconClose",
-            label: this.i18n.removeNewlines,
+            label: this.i18n.pasteOptions.removeNewlines,
             click: (detail, event) => {
-
                 this.toggleOption("removeNewlines", detail);
             }
         });
         menu.addItem({
             icon: this.data[STORAGE_NAME].removeSpaces ? "iconSelect" : "iconClose",
-            label: this.i18n.removeSpaces,
+            label: this.i18n.pasteOptions.removeSpaces,
             click: (detail, event) => {
-
                 this.toggleOption("removeSpaces", detail);
             }
         });
         menu.addItem({
             icon: this.data[STORAGE_NAME].removeEmptyLines ? "iconSelect" : "iconClose",
-            label: this.i18n.removeEmptyLines,
+            label: this.i18n.pasteOptions.removeEmptyLines,
             click: (detail, event) => {
-
                 this.toggleOption("removeEmptyLines", detail);
             }
         });
         menu.addItem({
             icon: this.data[STORAGE_NAME].addEmptyLines ? "iconSelect" : "iconClose",
-            label: this.i18n.addEmptyLines,
+            label: this.i18n.pasteOptions.addEmptyLines,
             click: (detail, event) => {
-
                 this.toggleOption("addEmptyLines", detail);
             }
         });
-
-        // Add new list conversion option
         menu.addItem({
             icon: this.data[STORAGE_NAME].pptList ? "iconSelect" : "iconClose",
-            label: "富文本列表转换",
+            label: this.i18n.pasteOptions.convertList,
             click: async (detail, event) => {
-
                 this.toggleOption("pptList", detail);
             }
         });
@@ -237,7 +230,7 @@ export default class PluginSample extends Plugin {
         // Only show merge option when multiple blocks are selected
         if (detail.blockElements && detail.blockElements.length > 1) {
             menuItems.push({
-                label: "合并块",
+                label: this.i18n.blockOperations.mergeBlocks,
                 click: async () => {
                     try {
                         const firstBlockId = detail.blockElements[0].dataset.nodeId;
@@ -272,7 +265,7 @@ export default class PluginSample extends Plugin {
             const block = detail.blockElements[0];
             if (block.dataset.type === "NodeList") {
                 menuItems.push({
-                    label: "仅复制一级列表内容",
+                    label: this.i18n.blockOperations.copyFirstLevel,
                     click: async () => {
                         try {
                             const blockId = block.dataset.nodeId;
@@ -285,7 +278,7 @@ export default class PluginSample extends Plugin {
                             
                             if (firstLevelItems) {
                                 navigator.clipboard.writeText(firstLevelItems);
-                                showMessage("First level items copied to clipboard");
+                                showMessage(this.i18n.messages.firstLevelCopied);
                             }
                         } catch (e) {
                             console.error('Error extracting first level items:', e);
@@ -297,7 +290,7 @@ export default class PluginSample extends Plugin {
 
         menuItems.push({
             icon: "",
-            label: "拆分块",
+            label: this.i18n.blockOperations.splitBlocks,
             click: async () => {
                 try {
                     for (const block of detail.blockElements) {
@@ -331,7 +324,7 @@ export default class PluginSample extends Plugin {
 
         menuItems.push({
             icon: "",
-            label: "列表符号转markdown列表",
+            label: this.i18n.blockOperations.convertToMarkdownList,
             click: async () => {
                 try {
                     for (const block of detail.blockElements) {

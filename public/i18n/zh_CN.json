@@ -1,8 +1,20 @@
 {
     "addTopBarIcon": "粘贴时自动处理",
-    "latexConversion": "Latex公式自动转换",
-    "removeNewlines": "去除换行",
-    "removeSpaces": "去除空格",
-    "removeEmptyLines": "去除空行",
-    "addEmptyLines": "添加空行"
+    "pasteOptions": {
+        "latexConversion": "Latex公式自动转换",
+        "removeNewlines": "去除换行",
+        "removeSpaces": "去除空格",
+        "removeEmptyLines": "去除空行",
+        "addEmptyLines": "添加空行",
+        "convertList": "富文本列表转换"
+    },
+    "blockOperations": {
+        "mergeBlocks": "合并块",
+        "splitBlocks": "拆分块",
+        "copyFirstLevel": "仅复制一级列表内容",
+        "convertToMarkdownList": "列表符号转markdown列表"
+    },
+    "messages": {
+        "firstLevelCopied": "已复制一级列表内容"
+    }
 }

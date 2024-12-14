@@ -1,8 +1,20 @@
 {
     "addTopBarIcon": "Paste Process",
-    "latexConversion": "Latex Conversion",
-    "removeNewlines": "Remove Newlines",
-    "removeSpaces": "Remove Spaces",
-    "removeEmptyLines": "Remove Empty Lines",
-    "addEmptyLines": "Add Empty Lines"
+    "pasteOptions": {
+        "latexConversion": "Latex Conversion",
+        "removeNewlines": "Remove Newlines",
+        "removeSpaces": "Remove Spaces",
+        "removeEmptyLines": "Remove Empty Lines",
+        "addEmptyLines": "Add Empty Lines",
+        "convertList": "Convert Rich Text List"
+    },
+    "blockOperations": {
+        "mergeBlocks": "Merge Blocks",
+        "splitBlocks": "Split Blocks",
+        "copyFirstLevel": "Copy First Level List Items",
+        "convertToMarkdownList": "Convert to Markdown List"
+    },
+    "messages": {
+        "firstLevelCopied": "First level items copied to clipboard"
+    }
 }
