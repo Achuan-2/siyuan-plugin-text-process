@@ -36,15 +36,18 @@ Current features include:
 
 ### Block Processing
 
-The plugin adds three buttons to the block menu:
+The plugin adds four buttons to the block menu:
 
 * Merge blocks (appears when two or more blocks are selected)
 * Split blocks
 * Copy only first-level list content (appears when a list block is selected)
-* Convert list symbols to Markdown list
+* Convert list symbols to Markdown list format
+  * Converts bullet symbols like •○▪▫◆◇►▻❖✦✴✿❀⚪☐ to SiYuan Notes list format
 
 ## ❤️ Support
 
 If you like my plugin, please star the GitHub repository and consider making a donation. This will motivate me to continue improving this plugin and developing new ones.
 
 ![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/20241118182532-2024-11-18.png)
+
+For the list of donors, please visit: https://www.yuque.com/achuan-2
