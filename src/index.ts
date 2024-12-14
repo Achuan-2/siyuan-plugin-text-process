@@ -44,7 +44,8 @@ export default class PluginSample extends Plugin {
             removeNewlines: false,
             removeSpaces: false,
             removeEmptyLines: false, // 新增去除空行选项
-            addEmptyLines: false // 新增添加空行选项
+            addEmptyLines: false, // 新增添加空行选项
+            pptList: false
         }
         await this.loadData(STORAGE_NAME);
         console.log(this.data[STORAGE_NAME]);
@@ -78,7 +79,7 @@ export default class PluginSample extends Plugin {
         // 添加块菜单
         this.eventBus.on('click-blockicon', this.handleBlockMenu.bind(this));
     }
-    
+
 
     onLayoutReady() {
 
@@ -103,9 +104,7 @@ export default class PluginSample extends Plugin {
         console.log(event.detail)
         let text = event.detail.textPlain;
         let html = event.detail.textHTML;
-        let siyuan = event.detail.siyuanHTML;
         if (this.data[STORAGE_NAME].latexConversion) {
-            console.log()
             text = text.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // latex 行间数学公式块，允许中间有换行
             text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // latex 行内数学公式
             siyuan = siyuan.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // latex 行间数学公式块，允许中间有换行
@@ -131,21 +130,91 @@ export default class PluginSample extends Plugin {
             text = text.replace(/([^\n])\n([^\n])/g, '$1\n\n$2'); // 添加空行，只匹配只有一个换行的
             html = html.replace(/(<br>)(?!<br>)/g, '$1<br>'); // 添加空行，只匹配只有一个<br>的
         }
+        if (this.data[STORAGE_NAME].pptList) {
+            text = text.replace(/•/g, '- ');// 富文本列表符号转markdown列表
+            html = html.replace(/•/g, '- ');// 富文本列表符号转markdown列表
+            // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
+            html = this.convertWordListToHtml(html);
+            console.log(html);
+
+        }
         event.detail.resolve({
             textPlain: text,
             textHTML: html,
-            siyuanHTML: siyuan
         });
     }
 
+    private convertWordListToHtml(htmlString) {
+        // 创建一个DOM解析器
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+
+        // 先删除所有带有mso-list:Ignore的span元素
+        doc.querySelectorAll('span[style*="mso-list:Ignore"]').forEach(span => {
+            span.remove();
+        });
+
+        // 找到所有段落
+        const paragraphs = doc.querySelectorAll('p');
+
+        // 创建一个文档片段来存储结果
+        const fragment = document.createDocumentFragment();
+
+        // 当前的ul元素栈，用于处理嵌套
+        let currentUl = null;
+        let previousLevel = 0;
+
+        paragraphs.forEach(p => {
+            const style = p.getAttribute('style') || '';
+            const levelMatch = style.match(/level(\d+)/);
+
+            if (levelMatch) {
+                // 这是一个列表项
+                const currentLevel = parseInt(levelMatch[1]);
+
+                if (!currentUl) {
+                    // 创建第一个ul
+                    currentUl = document.createElement('ul');
+                    fragment.appendChild(currentUl);
+                } else if (currentLevel > previousLevel) {
+                    // 需要创建新的嵌套ul
+                    const newUl = document.createElement('ul');
+                    currentUl.lastElementChild.appendChild(newUl);
+                    currentUl = newUl;
+                } else if (currentLevel < previousLevel) {
+                    // 需要返回上层ul
+                    for (let i = 0; i < previousLevel - currentLevel; i++) {
+                        currentUl = currentUl.parentElement.parentElement;
+                    }
+                }
+
+                // 创建li元素并保持原有内容
+                const li = document.createElement('li');
+                li.innerHTML = p.innerHTML;
+                currentUl.appendChild(li);
+
+                previousLevel = currentLevel;
+            } else {
+                // 不是列表项，直接添加
+                fragment.appendChild(p.cloneNode(true));
+                currentUl = null;
+                previousLevel = 0;
+            }
+        });
+
+        // 将处理后的内容转换回字符串
+        const resultDiv = document.createElement('div');
+        resultDiv.appendChild(fragment);
+        return resultDiv.innerHTML;
+    }
+
     private addMenu(rect?: DOMRect) {
-        const menu = new Menu("pasteProcess", () => {});
+        const menu = new Menu("pasteProcess", () => { });
         menu.addItem({
             icon: this.data[STORAGE_NAME].latexConversion ? "iconSelect" : "iconClose",
             label: this.i18n.latexConversion,
             click: (detail, event) => {
-                event.preventDefault();
-                event.stopPropagation();
+
                 this.toggleOption("latexConversion", detail);
             }
         });
@@ -153,8 +222,7 @@ export default class PluginSample extends Plugin {
             icon: this.data[STORAGE_NAME].removeNewlines ? "iconSelect" : "iconClose",
             label: this.i18n.removeNewlines,
             click: (detail, event) => {
-                event.preventDefault();
-                event.stopPropagation();
+
                 this.toggleOption("removeNewlines", detail);
             }
         });
@@ -162,8 +230,7 @@ export default class PluginSample extends Plugin {
             icon: this.data[STORAGE_NAME].removeSpaces ? "iconSelect" : "iconClose",
             label: this.i18n.removeSpaces,
             click: (detail, event) => {
-                event.preventDefault();
-                event.stopPropagation();
+
                 this.toggleOption("removeSpaces", detail);
             }
         });
@@ -171,8 +238,7 @@ export default class PluginSample extends Plugin {
             icon: this.data[STORAGE_NAME].removeEmptyLines ? "iconSelect" : "iconClose",
             label: this.i18n.removeEmptyLines,
             click: (detail, event) => {
-                event.preventDefault();
-                event.stopPropagation();
+
                 this.toggleOption("removeEmptyLines", detail);
             }
         });
@@ -180,11 +246,21 @@ export default class PluginSample extends Plugin {
             icon: this.data[STORAGE_NAME].addEmptyLines ? "iconSelect" : "iconClose",
             label: this.i18n.addEmptyLines,
             click: (detail, event) => {
-                event.preventDefault();
-                event.stopPropagation();
+
                 this.toggleOption("addEmptyLines", detail);
             }
         });
+
+        // Add new list conversion option
+        menu.addItem({
+            icon: this.data[STORAGE_NAME].pptList ? "iconSelect" : "iconClose",
+            label: "富文本列表转换",
+            click: async (detail, event) => {
+
+                this.toggleOption("pptList", detail);
+            }
+        });
+
         if (this.isMobile) {
             menu.fullscreen();
         } else {
@@ -210,7 +286,7 @@ export default class PluginSample extends Plugin {
     }
 
     private updateTopBarBackground() {
-        if (this.data[STORAGE_NAME].latexConversion || this.data[STORAGE_NAME].removeNewlines || this.data[STORAGE_NAME].removeSpaces || this.data[STORAGE_NAME].removeEmptyLines || this.data[STORAGE_NAME].addEmptyLines) {
+        if (this.data[STORAGE_NAME].latexConversion || this.data[STORAGE_NAME].removeNewlines || this.data[STORAGE_NAME].removeSpaces || this.data[STORAGE_NAME].removeEmptyLines || this.data[STORAGE_NAME].addEmptyLines || this.data[STORAGE_NAME].pptList) {
             this.topBarElement.style.backgroundColor = "var(--b3-toolbar-hover)";
         } else {
             this.topBarElement.style.backgroundColor = "";
@@ -229,7 +305,7 @@ export default class PluginSample extends Plugin {
                     try {
                         const firstBlockId = detail.blockElements[0].dataset.nodeId;
                         let mergedContent = '';
-                        
+
                         // Gather content from all blocks using SQL
                         for (const block of detail.blockElements) {
                             const blockId = block.dataset.nodeId;
@@ -241,7 +317,7 @@ export default class PluginSample extends Plugin {
 
                         // Update first block with merged content
                         await updateBlock('markdown', mergedContent.trim(), firstBlockId);
-                        
+
                         // Delete other blocks
                         for (let i = 1; i < detail.blockElements.length; i++) {
                             const blockId = detail.blockElements[i].dataset.nodeId;
@@ -273,7 +349,7 @@ export default class PluginSample extends Plugin {
                                 let previousId = blockId;
                                 for (let i = 1; i < lines.length; i++) {
                                     if (lines[i].trim()) { // Skip empty lines
-                                        
+
                                         // const newBlock = await insertBlock(
                                         //     'markdown',
                                         //     lines[i],
