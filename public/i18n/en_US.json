@@ -1,7 +1,7 @@
 {
     "addTopBarIcon": "Paste Process",
     "pasteOptions": {
-        "latexConversion": "Latex Conversion",
+        "LaTeXConversion": "LaTeX Conversion",
         "removeNewlines": "Remove Newlines",
         "removeSpaces": "Remove Spaces",
         "removeEmptyLines": "Remove Empty Lines",

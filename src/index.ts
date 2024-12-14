@@ -41,7 +41,7 @@ export default class PluginSample extends Plugin {
         this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
         // 设置配置默认值
         this.data[STORAGE_NAME] = {
-            latexConversion: false,
+            LaTeXConversion: false,
             removeNewlines: false,
             removeSpaces: false,
             removeEmptyLines: false, // 新增去除空行选项
@@ -105,11 +105,13 @@ export default class PluginSample extends Plugin {
         console.log(event.detail)
         let text = event.detail.textPlain;
         let html = event.detail.textHTML;
-        if (this.data[STORAGE_NAME].latexConversion) {
-            text = text.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // latex 行间数学公式块，允许中间有换行
-            text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // latex 行内数学公式
-            siyuan = siyuan.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // latex 行间数学公式块，允许中间有换行
-            siyuan = siyuan.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // latex 行内数学公式
+        let siyuan = event.detail.siyuanHTML;
+        if (this.data[STORAGE_NAME].LaTeXConversion) {
+            text = text.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // LaTeX 行间数学公式块，允许中间有换行
+            text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
+            siyuan = siyuan.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // LaTeX 行间数学公式块，允许中间有换行
+            siyuan = siyuan.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
+
         }
         if (this.data[STORAGE_NAME].removeNewlines) {
             text = text.replace(/\n/g, ''); // 去除换行
@@ -143,16 +145,17 @@ export default class PluginSample extends Plugin {
         event.detail.resolve({
             textPlain: text,
             textHTML: html,
+            siyuanHTML: siyuan
         });
     }
 
     private addMenu(rect?: DOMRect) {
         const menu = new Menu("pasteProcess", () => { });
         menu.addItem({
-            icon: this.data[STORAGE_NAME].latexConversion ? "iconSelect" : "iconClose",
-            label: this.i18n.pasteOptions.latexConversion,
+            icon: this.data[STORAGE_NAME].LaTeXConversion ? "iconSelect" : "iconClose",
+            label: this.i18n.pasteOptions.LaTeXConversion,
             click: (detail, event) => {
-                this.toggleOption("latexConversion", detail);
+                this.toggleOption("LaTeXConversion", detail);
             }
         });
         menu.addItem({
@@ -216,7 +219,7 @@ export default class PluginSample extends Plugin {
     }
 
     private updateTopBarBackground() {
-        if (this.data[STORAGE_NAME].latexConversion || this.data[STORAGE_NAME].removeNewlines || this.data[STORAGE_NAME].removeSpaces || this.data[STORAGE_NAME].removeEmptyLines || this.data[STORAGE_NAME].addEmptyLines || this.data[STORAGE_NAME].pptList) {
+        if (this.data[STORAGE_NAME].LaTeXConversion || this.data[STORAGE_NAME].removeNewlines || this.data[STORAGE_NAME].removeSpaces || this.data[STORAGE_NAME].removeEmptyLines || this.data[STORAGE_NAME].addEmptyLines || this.data[STORAGE_NAME].pptList) {
             this.topBarElement.style.backgroundColor = "var(--b3-toolbar-hover)";
         } else {
             this.topBarElement.style.backgroundColor = "";
@@ -279,12 +282,12 @@ export default class PluginSample extends Plugin {
                         try {
                             const blockId = block.dataset.nodeId;
 
-                            
+
                             // Get all top level list items·
                             const firstLevelItems = Array.from(document.querySelector(`[data-node-id="${blockId}"]`).querySelectorAll(':scope > .li > .p'))
                                 .map(li => `- ${li.textContent.trim()}`)
                                 .join('\n');
-                            
+
                             if (firstLevelItems) {
                                 navigator.clipboard.writeText(firstLevelItems);
                                 showMessage(this.i18n.messages.firstLevelCopied);
@@ -327,7 +330,7 @@ export default class PluginSample extends Plugin {
                                 for (let i = 1; i < lines.length; i++) {
                                     if (lines[i].trim()) { // Skip empty lines
                                         await refreshSql();
-                                        const newBlock = await insertBlock('markdown', lines[i], null, previousId,null)
+                                        const newBlock = await insertBlock('markdown', lines[i], null, previousId, null)
                                         if (newBlock) {
                                             previousId = newBlock[0].doOperations[0].id;
                                         }
