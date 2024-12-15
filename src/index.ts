@@ -65,10 +65,17 @@ export default class PluginText extends Plugin {
         });
         this.settingUtils.addItem({
             key: "copyMultiLevelSymbol",
-            value: "💡■",
+            value: "■○",
             type: "textinput",
             title: this.i18n.settings.copyMultiLevelSymbol.title,
             description: this.i18n.settings.copyMultiLevelSymbol.description,
+        });
+        this.settingUtils.addItem({
+            key: "copyHeadingSymbol",
+            value: "❤️⭐️💡",
+            type: "textinput",
+            title: this.i18n.settings.copyHeadingSymbol.title,
+            description: this.i18n.settings.copyHeadingSymbol.description,
         });
         await this.settingUtils.load(); //导入配置并合并
         // 监听粘贴事件
@@ -406,14 +413,31 @@ export default class PluginText extends Plugin {
             label: this.i18n.blockOperations.copyMultiLevel,
             click: async () => {
                 try {
-                    const symbols = [...this.settingUtils.get("copyMultiLevelSymbol")];
+                    const symbols = [...this.settingUtils.get("copyMultiLevelSymbol")].filter(char => char !== '️'); // Filter out empty strings and trim any extra spaces
+                    // Replace all emojis with simple text characters to avoid extra spaces
+                    const headingSymbols = [...this.settingUtils.get("copyHeadingSymbol")]
+                        .filter(char => char !== '️');// Filter out empty strings and trim any extra spaces
                     let allBlocksContent = [];
 
                     for (const block of detail.blockElements) {
                         const blockId = block.dataset.nodeId;
 
+                        // Check if block is a heading
+                        if (block.dataset.type === "NodeHeading") {
+                            
+                            // Get heading level (1-6)
+                            const level = parseInt(Array.from(block.classList)
+                                .find(c => c.match(/h[1-6]/))
+                                .substring(1)) - 1;
+                            console.log(level);
+                            const symbol = headingSymbols.length > 0 ? 
+                                headingSymbols[level % headingSymbols.length] : 
+                                '❤️';
+                            
+                            allBlocksContent.push(`${symbol} ${block.textContent.trim()}`);
+                        }
                         // Check if block is a list
-                        if (block.dataset.type === "NodeList") {
+                        else if (block.dataset.type === "NodeList") {
                             // Helper function to convert numbers to emoji digits
                             function numberToEmoji(num) {
                                 const emojiDigits = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];

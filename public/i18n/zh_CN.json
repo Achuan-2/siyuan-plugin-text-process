@@ -22,13 +22,17 @@
         "multiLevelCopied": "已复制多级列表内容"
     },
     "settings": {
-        "copyFirstLevelSymbol":{
+        "copyFirstLevelSymbol": {
             "title": "列表转纯文本的无序列表符号（仅复制一级列表）",
             "description": "举例：</br> emoji：✨✅⭐️💡⚡️</br> 符号：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
         },
         "copyMultiLevelSymbol": {
             "title": "列表转纯文本的无序列表符号（复制多级列表）",
             "description": "输入多个符号，会根据层级来使用不同符号</br> 举例：</br> emoji：✨✅⭐️💡⚡️</br> 符号：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
+        },
+        "copyHeadingSymbol": {
+            "title": "标题转纯文本的标题符号",
+            "description": "输入多个符号，会根据标题层级来使用不同符号</br> 举例：</br> emoji：❤️⭐️💡</br> 第一个符号用于h1标题，第二个符号用于h2标题，以此类推"
         }
     }
 }
