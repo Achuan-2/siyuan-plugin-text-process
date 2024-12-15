@@ -13,26 +13,26 @@
     "blockOperations": {
         "mergeBlocks": "合并块",
         "splitBlocks": "拆分块",
-        "copyFirstLevel": "列表转纯文本带符号（仅复制一级列表）",
+        "copyFirstLevel": "仅复制一级列表（带符号）",
         "copyMultiLevel": "复制到小红书",
         "convertToMarkdownList": "列表符号转markdown列表"
     },
     "messages": {
-        "firstLevelCopied": "已复制一级列表内容",
-        "multiLevelCopied": "已复制多级列表内容"
+        "firstLevelCopied": "已复制内容",
+        "multiLevelCopied": "已复制内容"
     },
     "settings": {
         "copyFirstLevelSymbol": {
-            "title": "列表转纯文本的无序列表符号（仅复制一级列表）",
-            "description": "举例：</br> emoji：✨✅⭐️💡⚡️</br> 符号：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
+            "title": "仅复制一级列表的无序列表符号设置",
+            "description": "列表符号举例：</br> emoji：✨✅⭐️💡⚡️</br> 符号：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
         },
         "copyMultiLevelSymbol": {
-            "title": "列表转纯文本的无序列表符号（复制多级列表）",
-            "description": "输入多个符号，会根据层级来使用不同符号</br> 举例：</br> emoji：✨✅⭐️💡⚡️</br> 符号：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
+            "title": "复制到小红书的无序列表符号设置",
+            "description": "输入多个符号，会根据层级来使用不同符号</br> 列表符号举例：</br> emoji：✨✅⭐️💡⚡️</br> 符号：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
         },
         "copyHeadingSymbol": {
-            "title": "标题转纯文本的标题符号",
-            "description": "输入多个符号，会根据标题层级来使用不同符号</br> 举例：</br> emoji：❤️⭐️💡</br> 第一个符号用于h1标题，第二个符号用于h2标题，以此类推"
+            "title": "复制到小红书的标题符号设置",
+            "description": "输入多个符号，会根据标题层级来使用不同符号</br> 标题符号举例：</br> emoji：❤️⭐️💡</br> 第一个符号用于h1标题，第二个符号用于h2标题，以此类推"
         }
     }
 }
