@@ -15,7 +15,10 @@
         "splitBlocks": "拆分块",
         "copyFirstLevel": "仅复制一级列表（带符号）",
         "copyMultiLevel": "复制到小红书",
-        "convertToMarkdownList": "列表符号转markdown列表"
+        "convertToMarkdownList": "列表符号转markdown列表",
+        "removeSuperscript": "去除上标",
+        "removeLinks": "去除链接保留文字",
+        "removeSpaces": "去除空格"
     },
     "messages": {
         "firstLevelCopied": "已复制内容",

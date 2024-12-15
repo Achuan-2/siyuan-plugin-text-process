@@ -59,6 +59,8 @@
    
    ![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/PixPin_2024-12-15_18-01-10-2024-12-15.png)
    ![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/PixPin_2024-12-15_18-00-28-2024-12-15.png)
+* 去除链接
+* 去除上标
 
 ## ❤️ 用爱发电
 

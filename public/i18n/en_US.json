@@ -15,7 +15,10 @@
         "splitBlocks": "Split Blocks",
         "copyFirstLevel": "Copy First Level List Items",
         "copyMultiLevel": "Copy Multi Level List Items",
-        "convertToMarkdownList": "Convert to Markdown List"
+        "convertToMarkdownList": "Convert to Markdown List",
+        "removeSuperscript": "Remove Superscript",
+        "removeLinks": "Remove Links Keep Text",
+        "removeSpaces": "Remove Spaces"
     },
     "messages": {
         "firstLevelCopied": "First level items copied to clipboard",
