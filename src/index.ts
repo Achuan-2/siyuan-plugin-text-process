@@ -242,11 +242,8 @@ export default class PluginText extends Plugin {
     }
 
     private updateTopBarBackground() {
-        if (this.data[STORAGE_NAME].LaTeXConversion || this.data[STORAGE_NAME].removeNewlines || this.data[STORAGE_NAME].removeSpaces || this.data[STORAGE_NAME].removeEmptyLines || this.data[STORAGE_NAME].addEmptyLines || this.data[STORAGE_NAME].pptList) {
-            this.topBarElement.style.backgroundColor = "var(--b3-toolbar-hover)";
-        } else {
-            this.topBarElement.style.backgroundColor = "";
-        }
+        const hasActiveOption = Object.values(this.data[STORAGE_NAME]).some(value => value === true);
+        this.topBarElement.style.backgroundColor = hasActiveOption ? "var(--b3-toolbar-hover)" : "";
     }
     private async handleBlockMenu({ detail }) {
         let menu = detail.menu;
