@@ -106,12 +106,14 @@ export default class PluginText extends Plugin {
 
     async onunload() {
         this.eventBus.off("paste", this.eventBusPaste.bind(this));
+        this.eventBus.off('click-blockicon', this.handleBlockMenu.bind(this));
         console.log("onunload");
     }
 
 
     uninstall() {
         this.eventBus.off("paste", this.eventBusPaste.bind(this));
+        this.eventBus.off('click-blockicon', this.handleBlockMenu.bind(this));
         console.log("uninstall");
     }
 
