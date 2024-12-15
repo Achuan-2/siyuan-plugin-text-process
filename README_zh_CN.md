@@ -19,7 +19,7 @@
 
 在思源笔记的顶栏添加一个按钮，可以选择开启或关闭某个处理功能。
 
-![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/PixPin_2024-12-14_18-53-29-2024-12-14.png)
+![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/PixPin_2024-12-15_18-10-59-2024-12-15.png)
 
 目前具有的功能：
 
