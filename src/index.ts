@@ -124,6 +124,7 @@ export default class PluginText extends Plugin {
         let text = event.detail.textPlain;
         let html = event.detail.textHTML;
         let siyuan = event.detail.siyuanHTML;
+        console.log(event.detail);
         if (this.data[STORAGE_NAME].LaTeXConversion) {
             text = text.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // LaTeX 行间数学公式块，允许中间有换行
             text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
@@ -140,7 +141,14 @@ export default class PluginText extends Plugin {
 
         }
         if (this.data[STORAGE_NAME].removeSpaces) {
-            text = text.replace(/\s/g, ''); // 去除空格
+            // Skip block reference patterns ((id 'text'))
+            if (text.match(/\(\([0-9]{14}-[a-zA-Z0-9]{7}\s+'[^']+'\)\)/)) {
+                // Don't process spaces for block references
+            } else if (text.match(/\{\{\s*select\s+[^\}]+\}\}/)) {
+                // Don't process spaces for block embeds
+            } else {
+                text = text.replace(/\s/g, ''); // Remove all spaces for non-block references
+            }
             html = html.replace(/\s/g, ''); // 去除空格
         }
         if (this.data[STORAGE_NAME].removeEmptyLines) {
