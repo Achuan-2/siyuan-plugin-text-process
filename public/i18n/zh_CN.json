@@ -6,7 +6,9 @@
         "removeSpaces": "去除空格",
         "removeEmptyLines": "去除空行",
         "addEmptyLines": "添加空行",
-        "convertList": "富文本列表转换"
+        "convertList": "富文本列表转换",
+        "removeSuperscript": "去除上标",
+        "removeLinks": "去除链接保留文字"
     },
     "blockOperations": {
         "mergeBlocks": "合并块",

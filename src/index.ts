@@ -44,7 +44,9 @@ export default class PluginText extends Plugin {
             removeSpaces: false,
             removeEmptyLines: false, // 新增去除空行选项
             addEmptyLines: false, // 新增添加空行选项
-            pptList: false
+            pptList: false,
+            removeSuperscript: false,  // Add new option
+            removeLinks: false // Add new option
         }
         await this.loadData(STORAGE_NAME);
         console.log(this.data[STORAGE_NAME]);
@@ -149,7 +151,7 @@ export default class PluginText extends Plugin {
             } else {
                 text = text.replace(/\s/g, ''); // Remove all spaces for non-block references
             }
-            html = html.replace(/\s/g, ''); // 去除空格
+            // html = html.replace(/\s/g, ''); // 去除空格
         }
         if (this.data[STORAGE_NAME].removeEmptyLines) {
             text = text.replace(/^\s*[\r\n]/gm, ''); // 去除空行
@@ -166,6 +168,14 @@ export default class PluginText extends Plugin {
             html = convertOfficeListToHtml(html);
 
         }
+        if (this.data[STORAGE_NAME].removeSuperscript) {
+            // text = text.replace(/\^([^\s^]+)(?=\s|$)/g, ''); // Remove superscript markers
+            html = html.replace(/<sup[^>]*>.*?<\/sup>/g, ''); // Remove HTML superscript tags with any attributes
+        }
+        if (this.data[STORAGE_NAME].removeLinks) {
+            text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1'); // Remove markdown links
+            html = html.replace(/<a[^>]*>(.*?)<\/a>/g, '$1'); // Remove HTML links
+        }
         event.detail.resolve({
             textPlain: text,
             textHTML: html,
@@ -180,6 +190,27 @@ export default class PluginText extends Plugin {
             label: this.i18n.pasteOptions.LaTeXConversion,
             click: (detail, event) => {
                 this.toggleOption("LaTeXConversion", detail);
+            }
+        });
+        menu.addItem({
+            icon: this.data[STORAGE_NAME].pptList ? "iconSelect" : "iconClose",
+            label: this.i18n.pasteOptions.convertList,
+            click: async (detail, event) => {
+                this.toggleOption("pptList", detail);
+            }
+        });
+        menu.addItem({
+            icon: this.data[STORAGE_NAME].removeSuperscript ? "iconSelect" : "iconClose",
+            label: this.i18n.pasteOptions.removeSuperscript,
+            click: (detail, event) => {
+                this.toggleOption("removeSuperscript", detail);
+            }
+        });
+        menu.addItem({
+            icon: this.data[STORAGE_NAME].removeLinks ? "iconSelect" : "iconClose",
+            label: this.i18n.pasteOptions.removeLinks,
+            click: (detail, event) => {
+                this.toggleOption("removeLinks", detail);
             }
         });
         menu.addItem({
@@ -208,13 +239,6 @@ export default class PluginText extends Plugin {
             label: this.i18n.pasteOptions.addEmptyLines,
             click: (detail, event) => {
                 this.toggleOption("addEmptyLines", detail);
-            }
-        });
-        menu.addItem({
-            icon: this.data[STORAGE_NAME].pptList ? "iconSelect" : "iconClose",
-            label: this.i18n.pasteOptions.convertList,
-            click: async (detail, event) => {
-                this.toggleOption("pptList", detail);
             }
         });
 

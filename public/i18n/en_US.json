@@ -6,7 +6,9 @@
         "removeSpaces": "Remove Spaces",
         "removeEmptyLines": "Remove Empty Lines",
         "addEmptyLines": "Add Empty Lines",
-        "convertList": "Convert Rich Text List"
+        "convertList": "Convert Rich Text List",
+        "removeSuperscript": "Remove Superscript",
+        "removeLinks": "Remove Links Keep Text"
     },
     "blockOperations": {
         "mergeBlocks": "Merge Blocks",
@@ -17,7 +19,7 @@
     },
     "messages": {
         "firstLevelCopied": "First level items copied to clipboard",
-        "multiLevelCopied": "Multi level items copied to clipboard",
+        "multiLevelCopied": "Multi level items copied to clipboard"
     },
     "settings": {
         "copyFirstLevelSymbol":{
@@ -27,5 +29,6 @@
         "copyMultiLevelSymbol": {
             "title": "Symbol for converting list to plain text (multi-level)",
             "description": "Enter multiple symbols, different symbols will be used according to the level</br> For example:</br> emoji：✨✅⭐️💡⚡️</br> symbol：☐❖✿ ✦ ◈○◆❀ ■ 🔲"
+        }
     }
 }
