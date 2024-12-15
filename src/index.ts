@@ -313,7 +313,6 @@ export default class PluginText extends Plugin {
             });
         }
 
-        // Add new condition for single list block
         if (detail.blockElements && detail.blockElements.length === 1) {
             const block = detail.blockElements[0];
 
@@ -356,86 +355,7 @@ export default class PluginText extends Plugin {
                     }
                 });
 
-                // Add new menu item for multi-level list copying
-                menuItems.push({
-                    label: this.i18n.blockOperations.copyMultiLevel,
-                    click: async () => {
-                        try {
-                            const blockId = block.dataset.nodeId;
-                            const symbols = [...this.settingUtils.get("copyMultiLevelSymbol")];
 
-                            // Helper function to convert numbers to emoji digits
-                            function numberToEmoji(num) {
-                                const emojiDigits = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣'];
-                                return num.toString().split('').map(d => emojiDigits[parseInt(d)]).join('');
-                            }
-
-                            function getListItemInfo(element) {
-                                let level = 0;
-                                let counters = new Map();
-                                let listTypes = [];
-                                
-                                // Get the root list element (selected block)
-                                const rootList = document.querySelector(`[data-node-id="${blockId}"]`);
-                                
-                                // Traverse up to collect list types and calculate level
-                                let parent = element.parentElement;
-                                while (parent && !parent.isSameNode(rootList.parentElement)) {
-                                    if (parent.classList.contains('list')) {
-                                        level++;
-                                        const isOrdered = parent.getAttribute('data-subtype') === 'o';
-                                        listTypes.unshift(isOrdered);
-                                        
-                                        if (isOrdered) {
-                                            let count = 1;
-                                            let sibling = element.closest('.li');
-                                            while (sibling.previousElementSibling) {
-                                                count++;
-                                                sibling = sibling.previousElementSibling;
-                                            }
-                                            counters.set(level, count);
-                                        }
-                                    }
-                                    parent = parent.parentElement;
-                                }
-                                return {
-                                    level: level - 1,
-                                    listTypes: listTypes,
-                                    counters: counters
-                                };
-                            }
-
-                            function getSymbolForLevel(info) {
-                                const level = info.level;
-                                const listType = info.listTypes[level];
-                                
-                                if (listType) { // ordered list
-                                    return numberToEmoji(info.counters.get(level + 1));
-                                } else { // unordered list
-                                    return symbols.length === 0 ? '■' : symbols[level % symbols.length];
-                                }
-                            }
-
-                            const listItems = document.querySelector(`[data-node-id="${blockId}"]`)
-                                .querySelectorAll('.li > .p');
-                            
-                            const formattedList = Array.from(listItems)
-                                .map(item => {
-                                    const info = getListItemInfo(item);
-                                    const symbol = getSymbolForLevel(info);
-                                    return `${symbol} ${item.textContent.trim()}`;
-                                })
-                                .join('\n');
-
-                            if (formattedList) {
-                                navigator.clipboard.writeText(formattedList);
-                                showMessage(this.i18n.messages.multiLevelCopied);
-                            }
-                        } catch (e) {
-                            console.error('Error copying multi-level list:', e);
-                        }
-                    }
-                });
             }
         }
 
@@ -481,7 +401,102 @@ export default class PluginText extends Plugin {
                 }
             }
         });
+        
+        menuItems.push({
+            label: this.i18n.blockOperations.copyMultiLevel,
+            click: async () => {
+                try {
+                    const symbols = [...this.settingUtils.get("copyMultiLevelSymbol")];
+                    let allBlocksContent = [];
 
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+
+                        // Check if block is a list
+                        if (block.dataset.type === "NodeList") {
+                            // Helper function to convert numbers to emoji digits
+                            function numberToEmoji(num) {
+                                const emojiDigits = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
+                                return num.toString().split('').map(d => emojiDigits[parseInt(d)]).join('');
+                            }
+
+                            function getListItemInfo(element) {
+                                let level = 0;
+                                let counters = new Map();
+                                let listTypes = [];
+
+                                const rootList = document.querySelector(`[data-node-id="${blockId}"]`);
+
+                                let parent = element.parentElement;
+                                while (parent && !parent.isSameNode(rootList.parentElement)) {
+                                    if (parent.classList.contains('list')) {
+                                        level++;
+                                        const isOrdered = parent.getAttribute('data-subtype') === 'o';
+                                        listTypes.unshift(isOrdered);
+
+                                        if (isOrdered) {
+                                            let count = 1;
+                                            let sibling = element.closest('.li');
+                                            while (sibling.previousElementSibling) {
+                                                count++;
+                                                sibling = sibling.previousElementSibling;
+                                            }
+                                            counters.set(level, count);
+                                        }
+                                    }
+                                    parent = parent.parentElement;
+                                }
+                                return {
+                                    level: level - 1,
+                                    listTypes: listTypes,
+                                    counters: counters
+                                };
+                            }
+
+                            function getSymbolForLevel(info) {
+                                const level = info.level;
+                                const listType = info.listTypes[level];
+
+                                if (listType) {
+                                    return numberToEmoji(info.counters.get(level + 1));
+                                } else {
+                                    return symbols.length === 0 ? '■' : symbols[level % symbols.length];
+                                }
+                            }
+
+                            const listItems = document.querySelector(`[data-node-id="${blockId}"]`)
+                                .querySelectorAll('.li > .p');
+
+                            const formattedList = Array.from(listItems)
+                                .map(item => {
+                                    const info = getListItemInfo(item);
+                                    const symbol = getSymbolForLevel(info);
+                                    return `${symbol} ${item.textContent.trim()}`;
+                                })
+                                .join('\n');
+
+                            if (formattedList) {
+                                allBlocksContent.push(formattedList);
+                            }
+                        } else {
+                            // For non-list blocks, just get the text content
+                            const content = block.textContent.trim();
+                            if (content) {
+                                allBlocksContent.push(content);
+                            }
+                        }
+                    }
+
+                    if (allBlocksContent.length > 0) {
+                        const finalContent = allBlocksContent.join('\n\n');
+                        navigator.clipboard.writeText(finalContent);
+                        showMessage(this.i18n.messages.multiLevelCopied);
+                    }
+                } catch (e) {
+                    console.error('Error copying content:', e);
+                }
+            }
+        });
         menuItems.push({
             icon: "",
             label: this.i18n.blockOperations.convertToMarkdownList,
@@ -501,7 +516,7 @@ export default class PluginText extends Plugin {
                 }
             }
         });
-
+        // Add new menu item for multi-level list copying
         menu.addItem({
             icon: "iconPaste",
             label: "文本处理",
