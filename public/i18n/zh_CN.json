@@ -6,7 +6,7 @@
         "removeSpaces": "去除空格",
         "removeEmptyLines": "去除空行",
         "addEmptyLines": "添加空行",
-        "convertList": "富文本列表转换",
+        "convertList": "列表样式保留",
         "removeSuperscript": "去除上标",
         "removeLinks": "去除链接保留文字"
     },
