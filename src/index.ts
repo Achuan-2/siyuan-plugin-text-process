@@ -540,6 +540,48 @@ export default class PluginText extends Plugin {
                 }
             }
         });
+        menuItems.push({
+            label: this.i18n.blockOperations.removeSuperscript,
+            click: async () => {
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const content = (await getBlockKramdown(blockId)).kramdown;
+                        if (content && content.length > 0) {
+                            // Remove superscript markdown syntax
+                            let updatedContent = content.replace(/\^([^\s^]+)(?=\s|$)/g, '$1');
+                            // Remove HTML superscript tags
+                            updatedContent = updatedContent.replace(/<sup[^>]*>.*?<\/sup>/g, '');
+                            await updateBlock('markdown', updatedContent, blockId);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error removing superscript:', e);
+                }
+            }
+        });
+
+        menuItems.push({
+            label: this.i18n.blockOperations.removeLinks,
+            click: async () => {
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const content = (await getBlockKramdown(blockId)).kramdown;
+                        if (content && content.length > 0) {
+                            // Remove markdown links while keeping text
+                            let updatedContent = content.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+                            // Remove HTML links while keeping text
+                            updatedContent = updatedContent.replace(/<a[^>]*>(.*?)<\/a>/g, '$1');
+                            await updateBlock('markdown', updatedContent, blockId);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error removing links:', e);
+                }
+            }
+        });
+
         // Add new menu item for multi-level list copying
         menu.addItem({
             icon: "iconPaste",
