@@ -279,46 +279,6 @@ export default class PluginText extends Plugin {
     private async handleBlockMenu({ detail }) {
         let menu = detail.menu;
         const menuItems = [];
-        // Only show merge option when multiple blocks are selected
-        if (detail.blockElements && detail.blockElements.length > 1) {
-            menuItems.push({
-                label: this.i18n.blockOperations.mergeBlocks,
-                click: async () => {
-                    try {
-                        const firstBlockId = detail.blockElements[0].dataset.nodeId;
-                        let mergedContent = '';
-
-                        // Gather content from all blocks using SQL
-                        for (const block of detail.blockElements) {
-                            const blockId = block.dataset.nodeId;
-                            const content = (await getBlockKramdown(blockId)).kramdown;
-                            // Split content into lines
-                            function cleanText(text) {
-                                let lines = text.split('\n');
-                                lines.pop(); // Remove last line
-                                return lines.join('\n');
-                            }
-
-                            let contentClean = cleanText(content);
-                            if (contentClean && contentClean.length > 0) {
-                                mergedContent += contentClean + '\n';
-                            }
-                        }
-
-                        // Update first block with merged content
-                        await updateBlock('markdown', mergedContent.trim(), firstBlockId);
-
-                        // Delete other blocks
-                        for (let i = 1; i < detail.blockElements.length; i++) {
-                            const blockId = detail.blockElements[i].dataset.nodeId;
-                            await deleteBlock(blockId);
-                        }
-                    } catch (e) {
-                        console.error('Error merging blocks:', e);
-                    }
-                }
-            });
-        }
 
         if (detail.blockElements && detail.blockElements.length === 1) {
             const block = detail.blockElements[0];
@@ -331,22 +291,22 @@ export default class PluginText extends Plugin {
                             const blockId = block.dataset.nodeId;
                             const listprefix = this.settingUtils.get("copyFirstLevelSymbol");
                             const defaultSymbol = '■';
-                            
+
                             // Helper function to convert numbers to emoji digits
                             function numberToEmoji(num) {
-                                const emojiDigits = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣'];
+                                const emojiDigits = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
                                 return num.toString().split('').map(d => emojiDigits[parseInt(d)]).join('');
                             }
 
                             // Get root list element
                             const rootList = document.querySelector(`[data-node-id="${blockId}"]`);
                             const isOrdered = rootList.getAttribute('data-subtype') === 'o';
-                            
+
                             // Get all top level list items
-                            const firstLevelItems = Array.from(rootList.querySelectorAll(':scope > .li > .p'))
+                            const firstLevelItems = Array.from(rootList.querySelectorAll(':scope > .li > .p:nth-child(2)'))
                                 .map((li, index) => {
-                                    const prefix = isOrdered ? 
-                                        numberToEmoji(index + 1) : 
+                                    const prefix = isOrdered ?
+                                        numberToEmoji(index + 1) :
                                         (listprefix || defaultSymbol);
                                     return `${prefix} ${li.textContent.trim()}`;
                                 })
@@ -367,49 +327,6 @@ export default class PluginText extends Plugin {
         }
 
         menuItems.push({
-            icon: "",
-            label: this.i18n.blockOperations.splitBlocks,
-            click: async () => {
-                try {
-                    for (const block of detail.blockElements) {
-                        const blockId = block.dataset.nodeId;
-                        const content = (await getBlockKramdown(blockId)).kramdown;
-                        if (content && content.length > 0) {
-                            // Split content into lines
-                            function cleanText(text) {
-                                return text
-                                    .split('\n')
-                                    .map(line => line.replace(/^[\s]*\{:[^}]*id="[^"]*"[^}]*\}/g, '').trim())
-                                    .filter(line => line) // 移除空行
-                                    .join('\n');
-                            }
-
-                            let contentClean = cleanText(content);
-                            const lines = contentClean.split('\n');
-                            if (lines.length > 1) {
-                                // Update original block with first line
-                                await updateBlock('markdown', lines[0], blockId);
-                                // Insert remaining lines as new blocks
-                                let previousId = blockId;
-                                for (let i = 1; i < lines.length; i++) {
-                                    if (lines[i].trim()) { // Skip empty lines
-                                        await refreshSql();
-                                        const newBlock = await insertBlock('markdown', lines[i], null, previousId, null)
-                                        if (newBlock) {
-                                            previousId = newBlock[0].doOperations[0].id;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error splitting blocks:', e);
-                }
-            }
-        });
-        
-        menuItems.push({
             label: this.i18n.blockOperations.copyMultiLevel,
             click: async () => {
                 try {
@@ -424,16 +341,16 @@ export default class PluginText extends Plugin {
 
                         // Check if block is a heading
                         if (block.dataset.type === "NodeHeading") {
-                            
+
                             // Get heading level (1-6)
                             const level = parseInt(Array.from(block.classList)
                                 .find(c => c.match(/h[1-6]/))
                                 .substring(1)) - 1;
                             console.log(level);
-                            const symbol = headingSymbols.length > 0 ? 
-                                headingSymbols[level % headingSymbols.length] : 
+                            const symbol = headingSymbols.length > 0 ?
+                                headingSymbols[level % headingSymbols.length] :
                                 '❤️';
-                            
+
                             allBlocksContent.push(`${symbol} ${block.textContent.trim()}`);
                         }
                         // Check if block is a list
@@ -521,6 +438,93 @@ export default class PluginText extends Plugin {
                 }
             }
         });
+
+        // Only show merge option when multiple blocks are selected
+        if (detail.blockElements && detail.blockElements.length > 1) {
+            menuItems.push({
+                label: this.i18n.blockOperations.mergeBlocks,
+                click: async () => {
+                    try {
+                        const firstBlockId = detail.blockElements[0].dataset.nodeId;
+                        let mergedContent = '';
+
+                        // Gather content from all blocks using SQL
+                        for (const block of detail.blockElements) {
+                            const blockId = block.dataset.nodeId;
+                            const content = (await getBlockKramdown(blockId)).kramdown;
+                            // Split content into lines
+                            function cleanText(text) {
+                                let lines = text.split('\n');
+                                lines.pop(); // Remove last line
+                                return lines.join('\n');
+                            }
+
+                            let contentClean = cleanText(content);
+                            if (contentClean && contentClean.length > 0) {
+                                mergedContent += contentClean + '\n';
+                            }
+                        }
+
+                        // Update first block with merged content
+                        await updateBlock('markdown', mergedContent.trim(), firstBlockId);
+
+                        // Delete other blocks
+                        for (let i = 1; i < detail.blockElements.length; i++) {
+                            const blockId = detail.blockElements[i].dataset.nodeId;
+                            await deleteBlock(blockId);
+                        }
+                    } catch (e) {
+                        console.error('Error merging blocks:', e);
+                    }
+                }
+            });
+        }
+
+
+        menuItems.push({
+            icon: "",
+            label: this.i18n.blockOperations.splitBlocks,
+            click: async () => {
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const content = (await getBlockKramdown(blockId)).kramdown;
+                        if (content && content.length > 0) {
+                            // Split content into lines
+                            function cleanText(text) {
+                                return text
+                                    .split('\n')
+                                    .map(line => line.replace(/^[\s]*\{:[^}]*id="[^"]*"[^}]*\}/g, '').trim())
+                                    .filter(line => line) // 移除空行
+                                    .join('\n');
+                            }
+
+                            let contentClean = cleanText(content);
+                            const lines = contentClean.split('\n');
+                            if (lines.length > 1) {
+                                // Update original block with first line
+                                await updateBlock('markdown', lines[0], blockId);
+                                // Insert remaining lines as new blocks
+                                let previousId = blockId;
+                                for (let i = 1; i < lines.length; i++) {
+                                    if (lines[i].trim()) { // Skip empty lines
+                                        await refreshSql();
+                                        const newBlock = await insertBlock('markdown', lines[i], null, previousId, null)
+                                        if (newBlock) {
+                                            previousId = newBlock[0].doOperations[0].id;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error splitting blocks:', e);
+                }
+            }
+        });
+        
+
         menuItems.push({
             icon: "",
             label: this.i18n.blockOperations.convertToMarkdownList,
