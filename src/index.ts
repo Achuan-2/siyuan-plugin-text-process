@@ -445,7 +445,8 @@ export default class PluginText extends Plugin {
                     }
 
                     if (allBlocksContent.length > 0) {
-                        const finalContent = allBlocksContent.join('\n\n');
+                        // Remove zero-width space characters (U+200B)
+                        const finalContent = allBlocksContent.join('\n').replace(/\u200B/g, '');
                         navigator.clipboard.writeText(finalContent);
                         showMessage(this.i18n.messages.multiLevelCopied);
                     }
