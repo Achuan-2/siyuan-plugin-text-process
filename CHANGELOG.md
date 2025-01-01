@@ -1,3 +1,6 @@
+## v0.0.9 / 2025.01.02
+- ✨复制到小红书：Remove zero-width space character and empty lines
+
 ## v0.0.8 / 2025.01.01
 - ✨ 「复制到小红书」支持任务列表样式
 - ✨多级列表添加空格
