@@ -301,14 +301,24 @@ export default class PluginText extends Plugin {
                             // Get root list element
                             const rootList = document.querySelector(`[data-node-id="${blockId}"]`);
                             const isOrdered = rootList.getAttribute('data-subtype') === 'o';
+                            const isTaskList = rootList.getAttribute('data-subtype') === 't';
 
                             // Get all top level list items
-                            const firstLevelItems = Array.from(rootList.querySelectorAll(':scope > .li > .p:nth-child(2)'))
+                            const firstLevelItems = Array.from(rootList.querySelectorAll(':scope > .li'))
                                 .map((li, index) => {
-                                    const prefix = isOrdered ?
-                                        numberToEmoji(index + 1) :
-                                        (listprefix || defaultSymbol);
-                                    return `${prefix} ${li.textContent.trim()}`;
+                                    const textContent = li.querySelector('.p:nth-child(2)').textContent.trim();
+                                    let prefix;
+
+                                    if (isTaskList) {
+                                        // Check if task is completed
+                                        prefix = li.classList.contains('protyle-task--done') ? '✅' : '❌';
+                                    } else if (isOrdered) {
+                                        prefix = numberToEmoji(index + 1);
+                                    } else {
+                                        prefix = listprefix || defaultSymbol;
+                                    }
+
+                                    return `${prefix} ${textContent}`;
                                 })
                                 .join('\n');
 
@@ -360,7 +370,6 @@ export default class PluginText extends Plugin {
                                 const emojiDigits = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
                                 return num.toString().split('').map(d => emojiDigits[parseInt(d)]).join('');
                             }
-
                             function getListItemInfo(element) {
                                 let level = 0;
                                 let counters = new Map();
@@ -373,7 +382,8 @@ export default class PluginText extends Plugin {
                                     if (parent.classList.contains('list')) {
                                         level++;
                                         const isOrdered = parent.getAttribute('data-subtype') === 'o';
-                                        listTypes.unshift(isOrdered);
+                                        const isTaskList = parent.getAttribute('data-subtype') === 't';
+                                        listTypes.unshift({ isOrdered, isTaskList });
 
                                         if (isOrdered) {
                                             let count = 1;
@@ -394,16 +404,21 @@ export default class PluginText extends Plugin {
                                 };
                             }
 
-                            function getSymbolForLevel(info) {
+                            function getSymbolForLevel(info, listItem) {
                                 const level = info.level;
                                 const listType = info.listTypes[level];
 
-                                if (listType) {
+                                if (listType.isTaskList) {
+                                    const symbols = [['✅', '❌'], ['✔', '✖️']];
+                                    const levelSymbols = symbols[level % symbols.length];
+                                    return listItem.parentElement.classList.contains('protyle-task--done') ? levelSymbols[0] : levelSymbols[1];
+                                } else if (listType.isOrdered) {
                                     return numberToEmoji(info.counters.get(level + 1));
                                 } else {
                                     return symbols.length === 0 ? '■' : symbols[level % symbols.length];
                                 }
                             }
+
 
                             const listItems = document.querySelector(`[data-node-id="${blockId}"]`)
                                 .querySelectorAll('.li > .p');
@@ -411,8 +426,9 @@ export default class PluginText extends Plugin {
                             const formattedList = Array.from(listItems)
                                 .map(item => {
                                     const info = getListItemInfo(item);
-                                    const symbol = getSymbolForLevel(info);
-                                    return `${symbol} ${item.textContent.trim()}`;
+                                    const symbol = getSymbolForLevel(info, item);
+                                    const indentation = ' '.repeat(2 * Math.max(0, info.level)); // Add space based on level
+                                    return `${indentation}${symbol} ${item.textContent.trim()}`;
                                 })
                                 .join('\n');
 
