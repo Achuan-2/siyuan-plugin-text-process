@@ -607,6 +607,7 @@ export default class PluginText extends Plugin {
         menuItems.push({
             label: this.i18n.blockOperations.removeSpaces,
             click: async () => {
+            let protyle = detail.protyle;
             try {
                 for (const block of detail.blockElements) {
                 const blockId = block.dataset.nodeId;
@@ -622,7 +623,8 @@ export default class PluginText extends Plugin {
                     updatedContent = updatedContent.replace(/\s+/g, ' ');
                     }
                     if (updatedContent !== blockHTML) {
-                    await updateBlock('dom', updatedContent, blockId);
+                        await updateBlock('dom', updatedContent, blockId);
+                        protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
                     }
                 }
                 }
