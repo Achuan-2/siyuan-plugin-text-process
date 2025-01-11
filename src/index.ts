@@ -461,9 +461,12 @@ export default class PluginText extends Plugin {
             menuItems.push({
                 label: this.i18n.blockOperations.mergeBlocks,
                 click: async () => {
+                    let protyle = detail.protyle;
                     try {
                         const firstBlockId = detail.blockElements[0].dataset.nodeId;
+                        const firstBlockOldDom = detail.blockElements[0].outerHTML;
                         let mergedContent = '';
+                        let deletedBlocksData = [];
 
                         // Gather content from all blocks using SQL
                         for (const block of detail.blockElements) {
@@ -480,16 +483,61 @@ export default class PluginText extends Plugin {
                             if (contentClean && contentClean.length > 0) {
                                 mergedContent += contentClean + '\n';
                             }
+
+                            // Store block data for deletion
+                            if (blockId !== firstBlockId) {
+                                deletedBlocksData.push({
+                                    id: blockId,
+                                    dom: block.outerHTML,
+                                    previousID: block.previousElementSibling ? block.previousElementSibling.dataset.nodeId : null
+                                });
+                            }
                         }
 
                         // Update first block with merged content
                         await updateBlock('markdown', mergedContent.trim(), firstBlockId);
 
-                        // Delete other blocks
-                        for (let i = 1; i < detail.blockElements.length; i++) {
-                            const blockId = detail.blockElements[i].dataset.nodeId;
-                            await deleteBlock(blockId);
+                        // Create new DOM for merged content
+                        let lute = window.Lute.New();
+                        let newBlockDom = lute.Md2BlockDOM(mergedContent.trim());
+                        newBlockDom = newBlockDom.replace(/data-node-id="[^"]*"/, `data-node-id="${firstBlockId}"`);
+
+                        // Update transaction for first block
+                        protyle.getInstance().updateTransaction(firstBlockId, newBlockDom, firstBlockOldDom);
+
+                        let doOperations: IOperation[] = [];
+                        let undoOperations: IOperation[] = [];
+                        doOperations.push({
+                            action: "update",
+                            id: firstBlockId,
+                            data: newBlockDom
+                        });
+                        undoOperations.push({
+                            action: "update",
+                            id: firstBlockId,
+                            data: firstBlockOldDom,
+                        });
+
+                        // Reverse the array to delete blocks from bottom to top
+                        for (const blockData of [...deletedBlocksData].reverse()) {
+
+                            await deleteBlock(blockData.id);
+                            doOperations.push({
+                                action: "delete",
+                                id: blockData.id,
+                                data: null
+                            });
+                            undoOperations.push({
+                                action: "insert",
+                                id: blockData.id,
+                                data: blockData.dom,
+                                previousID: firstBlockId,
+                                parentID: protyle.block.id
+                            });
+
                         }
+                        protyle.getInstance().transaction(doOperations, undoOperations);
+
                     } catch (e) {
                         console.error('Error merging blocks:', e);
                     }
@@ -502,36 +550,79 @@ export default class PluginText extends Plugin {
             icon: "",
             label: this.i18n.blockOperations.splitBlocks,
             click: async () => {
+                let protyle = detail.protyle;
                 try {
                     for (const block of detail.blockElements) {
                         const blockId = block.dataset.nodeId;
                         const content = (await getBlockKramdown(blockId)).kramdown;
+                        const oldBlockDom = block.outerHTML;
+
                         if (content && content.length > 0) {
                             // Split content into lines
                             function cleanText(text) {
                                 return text
                                     .split('\n')
                                     .map(line => line.replace(/^[\s]*\{:[^}]*id="[^"]*"[^}]*\}/g, '').trim())
-                                    .filter(line => line) // 移除空行
+                                    .filter(line => line)
                                     .join('\n');
                             }
 
                             let contentClean = cleanText(content);
                             const lines = contentClean.split('\n');
+
                             if (lines.length > 1) {
+                                let doOperations: IOperation[] = [];
+                                let undoOperations: IOperation[] = [];
+
                                 // Update original block with first line
-                                await updateBlock('markdown', lines[0], blockId);
+                                const firstLine = lines[0];
+                                await updateBlock('markdown', firstLine, blockId);
+                                let lute = window.Lute.New();
+                                let newBlockDom = lute.Md2BlockDOM(firstLine);
+                                newBlockDom = newBlockDom.replace(/data-node-id="[^"]*"/, `data-node-id="${blockId}"`);
+                                
+                                doOperations.push({
+                                    action: "update",
+                                    id: blockId,
+                                    data: newBlockDom
+                                });
+                                undoOperations.push({
+                                    action: "update",
+                                    id: blockId,
+                                    data: oldBlockDom
+                                });
+
                                 // Insert remaining lines as new blocks
                                 let previousId = blockId;
                                 for (let i = 1; i < lines.length; i++) {
-                                    if (lines[i].trim()) { // Skip empty lines
+                                    if (lines[i].trim()) {
                                         await refreshSql();
-                                        const newBlock = await insertBlock('markdown', lines[i], null, previousId, null)
+                                        const newBlock = await insertBlock('markdown', lines[i], null, previousId, null);
                                         if (newBlock) {
-                                            previousId = newBlock[0].doOperations[0].id;
+                                            const newId = newBlock[0].doOperations[0].id;
+                                            let newDom = lute.Md2BlockDOM(lines[i]);
+                                            newDom = newDom.replace(/data-node-id="[^"]*"/, `data-node-id="${newId}"`);
+                                            const emptyDom = `<div data-node-id="${newId}" data-node-index=\"5\"data-type="NodeParagraph" class="p"><div contenteditable="true" spellcheck="false"></div><div class="protyle-attr" contenteditable="false"><wbr></div></div>`;
+                                            
+                                            doOperations.push({
+                                                action: "insert",
+                                                id: newId,
+                                                data: newDom,
+                                                previousID: previousId,
+                                                parentID: protyle.block.id
+                                            });
+                                            undoOperations.push({
+                                                action: "delete",
+                                                id: newId,
+                                                data: null
+                                            });
+
+                                            previousId = newId;
                                         }
                                     }
                                 }
+
+                                protyle.getInstance().transaction(doOperations, undoOperations);
                             }
                         }
                     }
@@ -540,7 +631,7 @@ export default class PluginText extends Plugin {
                 }
             }
         });
-        
+
 
         menuItems.push({
             icon: "",
@@ -550,10 +641,17 @@ export default class PluginText extends Plugin {
                     for (const block of detail.blockElements) {
                         const blockId = block.dataset.nodeId;
                         const content = (await getBlockKramdown(blockId)).kramdown;
+                        const oldBlockDom = block.outerHTML;
                         if (content && content.length > 0) {
                             // Replace bullet points with markdown list syntax
                             const updatedContent = content.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');
+                            let lute = window.Lute.New();
+                            let newBlockDom = lute.Md2BlockDOM(updatedContent)
+                            console.log(newBlockDom)
+                            // 替换newBlockDom的data-node-id="xxx"为blockId
+                            newBlockDom = newBlockDom.replace(/data-node-id="[^"]*"/, `data-node-id="${blockId}"`);
                             await updateBlock('markdown', updatedContent, blockId);
+                            detail.protyle.getInstance().updateTransaction(blockId, newBlockDom, oldBlockDom);
                         }
                     }
                 } catch (e) {
@@ -564,16 +662,16 @@ export default class PluginText extends Plugin {
         menuItems.push({
             label: this.i18n.blockOperations.removeSuperscript,
             click: async () => {
+                let protyle = detail.protyle;
                 try {
                     for (const block of detail.blockElements) {
                         const blockId = block.dataset.nodeId;
-                        const content = (await getBlockKramdown(blockId)).kramdown;
-                        if (content && content.length > 0) {
-                            // Remove superscript markdown syntax
-                            let updatedContent = content.replace(/\^([^\s^]+)(?=\s|$)/g, '$1');
+                        const blockHTML = block.outerHTML;
+                        if (blockHTML) {
                             // Remove HTML superscript tags
-                            updatedContent = updatedContent.replace(/<sup[^>]*>.*?<\/sup>/g, '');
-                            await updateBlock('markdown', updatedContent, blockId);
+                            const updatedContent = blockHTML.replace(/<span data-type="sup"[^>]*>.*?<\/span>/g, '');
+                            await updateBlock('dom', updatedContent, blockId);
+                            protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
                         }
                     }
                 } catch (e) {
@@ -585,16 +683,18 @@ export default class PluginText extends Plugin {
         menuItems.push({
             label: this.i18n.blockOperations.removeLinks,
             click: async () => {
+                let protyle = detail.protyle;
                 try {
                     for (const block of detail.blockElements) {
                         const blockId = block.dataset.nodeId;
-                        const content = (await getBlockKramdown(blockId)).kramdown;
-                        if (content && content.length > 0) {
-                            // Remove markdown links while keeping text
-                            let updatedContent = content.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
-                            // Remove HTML links while keeping text
-                            updatedContent = updatedContent.replace(/<a[^>]*>(.*?)<\/a>/g, '$1');
-                            await updateBlock('markdown', updatedContent, blockId);
+                        const blockHTML = block.outerHTML;
+                        if (blockHTML) {
+                            // Remove span links while keeping text
+                            const updatedContent = blockHTML.replace(/<span data-type="[^"]*a[^"]*"[^>]*>(.*?)<\/span>/g, '$1');
+                            if (updatedContent !== blockHTML) {
+                                await updateBlock('dom', updatedContent, blockId);
+                                protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
+                            }
                         }
                     }
                 } catch (e) {
@@ -607,90 +707,86 @@ export default class PluginText extends Plugin {
         menuItems.push({
             label: this.i18n.blockOperations.removeSpaces,
             click: async () => {
-            let protyle = detail.protyle;
-            try {
-                for (const block of detail.blockElements) {
-                const blockId = block.dataset.nodeId;
-                const blockHTML = (await getBlockDOM(blockId)).dom;
-                if (blockHTML) {
-                    // Skip block reference patterns and embeds 
-                    let updatedContent = blockHTML;
-                    if (!blockHTML.match(/\(\([0-9]{14}-[a-zA-Z0-9]{7}\s+'[^']+'\)\)/) &&
-                    !blockHTML.match(/\{\{\s*select\s+[^\}]+\}\}/)) {
-                    // Remove spaces between Chinese characters but keep other necessary spaces
-                    updatedContent = blockHTML.replace(/([^\x00-\xff])\s+([^\x00-\xff])/g, '$1$2');
-                    // Remove extra spaces between words
-                    updatedContent = updatedContent.replace(/\s+/g, ' ');
+                let protyle = detail.protyle;
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const blockHTML = block.outerHTML;
+                        if (blockHTML) {
+                            // Skip block reference patterns and embeds 
+                            let updatedContent = blockHTML;
+                            // Remove spaces between Chinese characters but keep other necessary spaces
+                            updatedContent = blockHTML.replace(/([^\x00-\xff])\s+([^\x00-\xff])/g, '$1$2');
+                            // Remove extra spaces between words
+                            updatedContent = updatedContent.replace(/\s+/g, ' ');
+                            if (updatedContent !== blockHTML) {
+                                await updateBlock('dom', updatedContent, blockId);
+                                protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
+                            }
+                        }
                     }
-                    if (updatedContent !== blockHTML) {
-                        await updateBlock('dom', updatedContent, blockId);
-                        protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
-                    }
+                } catch (e) {
+                    console.error('Error removing spaces:', e);
                 }
-                }
-            } catch (e) {
-                console.error('Error removing spaces:', e);
-            }
             }
         });
 
         // Add new menu item for converting punctuation
         menuItems.push({
-            label: "英文符号转中文符号", 
+            label: "英文符号转中文符号",
             click: async () => {
-            let protyle = detail.protyle;
-            try {
-            for (const block of detail.blockElements) {
-            const blockId = block.dataset.nodeId;
-            const blockHTML = (await getBlockDOM(blockId)).dom;
-            if (blockHTML) {
-                // 匹配不在HTML标签内的英文符号
-                const regex = /(?<!<[^>]*)(['"]|[.,;!?()\[\]{}<>])(?![^<]*>)/g;
+                let protyle = detail.protyle;
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const blockHTML = block.outerHTML;
+                        if (blockHTML) {
+                            // 匹配不在HTML标签内的英文符号
+                            const regex = /(?<!<[^>]*)(['"]|[.,;!?()\[\]{}<>])(?![^<]*>)/g;
 
-                // 记录引号状态
-                let singleQuoteIsOpen = false;
-                let doubleQuoteIsOpen = false;
+                            // 记录引号状态
+                            let singleQuoteIsOpen = false;
+                            let doubleQuoteIsOpen = false;
 
-                // 符号映射表
-                const symbolMap = {
-                ".": "。",
-                ",": "，", 
-                ";": "；",
-                "!": "！", 
-                "?": "？",
-                "(": "（",
-                ")": "）",
-                };
+                            // 符号映射表
+                            const symbolMap = {
+                                ".": "。",
+                                ",": "，",
+                                ";": "；",
+                                "!": "！",
+                                "?": "？",
+                                "(": "（",
+                                ")": "）",
+                            };
 
-                // 替换符号
-                // First decode HTML entities
-                const decodedHTML = blockHTML.replace(/&quot;/g, '"')
-                    .replace(/&amp;/g, "&");
-                    
-                let updatedContent = decodedHTML.replace(regex, (match) => {
-                if (match === "'") {
-                    singleQuoteIsOpen = !singleQuoteIsOpen;
-                    return singleQuoteIsOpen ? '\u2018' : '\u2019';
-                }
-                if (match === '"') {
-                    doubleQuoteIsOpen = !doubleQuoteIsOpen;
-                    return doubleQuoteIsOpen ? '“' : '”';
+                            // 替换符号
+                            // First decode HTML entities
+                            const decodedHTML = blockHTML.replace(/&quot;/g, '"')
+                                .replace(/&amp;/g, "&");
+
+                            let updatedContent = decodedHTML.replace(regex, (match) => {
+                                if (match === "'") {
+                                    singleQuoteIsOpen = !singleQuoteIsOpen;
+                                    return singleQuoteIsOpen ? '\u2018' : '\u2019';
+                                }
+                                if (match === '"') {
+                                    doubleQuoteIsOpen = !doubleQuoteIsOpen;
+                                    return doubleQuoteIsOpen ? '“' : '”';
+                                }
+                                return symbolMap[match] || match;
+                            });
+                            // updatedContent的&lt；替换为&lt;，&gt；替换为&gt;
+                            updatedContent = updatedContent.replace(/&lt；/g, '&lt;').replace(/&gt；/g, '&gt;');
+                            // 更新块内容
+                            if (updatedContent !== blockHTML) {
+                                await updateBlock('dom', updatedContent, blockId);
+                                protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
+                            }
+                        }
                     }
-                return symbolMap[match] || match;
-                });
-                // updatedContent的&lt；替换为&lt;，&gt；替换为&gt;
-                updatedContent = updatedContent.replace(/&lt；/g, '&lt;').replace(/&gt；/g, '&gt;');
-                // 更新块内容
-                if (updatedContent !== blockHTML) {
-                    console.log(updatedContent);
-                    await updateBlock('dom', updatedContent, blockId);
-                    protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
+                } catch (e) {
+                    console.error('Error converting punctuation:', e);
                 }
-            }
-            }
-            } catch (e) {
-            console.error('Error converting punctuation:', e);
-            }
             }
         });
 
