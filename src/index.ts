@@ -603,15 +603,44 @@ export default class PluginText extends Plugin {
             }
         });
 
+        // Add new menu item for removing spaces
+        menuItems.push({
+            label: this.i18n.blockOperations.removeSpaces,
+            click: async () => {
+            try {
+                for (const block of detail.blockElements) {
+                const blockId = block.dataset.nodeId;
+                const blockHTML = (await getBlockDOM(blockId)).dom;
+                if (blockHTML) {
+                    // Skip block reference patterns and embeds 
+                    let updatedContent = blockHTML;
+                    if (!blockHTML.match(/\(\([0-9]{14}-[a-zA-Z0-9]{7}\s+'[^']+'\)\)/) &&
+                    !blockHTML.match(/\{\{\s*select\s+[^\}]+\}\}/)) {
+                    // Remove spaces between Chinese characters but keep other necessary spaces
+                    updatedContent = blockHTML.replace(/([^\x00-\xff])\s+([^\x00-\xff])/g, '$1$2');
+                    // Remove extra spaces between words
+                    updatedContent = updatedContent.replace(/\s+/g, ' ');
+                    }
+                    if (updatedContent !== blockHTML) {
+                    await updateBlock('dom', updatedContent, blockId);
+                    }
+                }
+                }
+            } catch (e) {
+                console.error('Error removing spaces:', e);
+            }
+            }
+        });
+
         // Add new menu item for converting punctuation
         menuItems.push({
             label: "英文符号转中文符号", 
             click: async () => {
+            let protyle = detail.protyle;
             try {
             for (const block of detail.blockElements) {
             const blockId = block.dataset.nodeId;
             const blockHTML = (await getBlockDOM(blockId)).dom;
-            
             if (blockHTML) {
                 // 匹配不在HTML标签内的英文符号
                 const regex = /(?<!<[^>]*)(['"]|[.,;!?()\[\]{}<>])(?![^<]*>)/g;
@@ -652,7 +681,8 @@ export default class PluginText extends Plugin {
                 // 更新块内容
                 if (updatedContent !== blockHTML) {
                     console.log(updatedContent);
-                await updateBlock('dom', updatedContent, blockId);
+                    await updateBlock('dom', updatedContent, blockId);
+                    protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
                 }
             }
             }
