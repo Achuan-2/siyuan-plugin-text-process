@@ -62,8 +62,10 @@
    
    ![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/PixPin_2024-12-15_18-01-10-2024-12-15.png)
    ![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/PixPin_2024-12-15_18-00-28-2024-12-15.png)
-* 去除链接
+* 链接转文本
 * 去除上标
+* 支持去除空格，智能识别英文空格，不会去除英文单词间的空格
+* 英文符号转中文符号，支持把英文逗号、句号、单引号、双引号等符号转中文符号
 
 ## ❤️ 用爱发电
 
