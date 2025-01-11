@@ -603,6 +603,65 @@ export default class PluginText extends Plugin {
             }
         });
 
+        // Add new menu item for converting punctuation
+        menuItems.push({
+            label: "英文符号转中文符号", 
+            click: async () => {
+            try {
+            for (const block of detail.blockElements) {
+            const blockId = block.dataset.nodeId;
+            const blockHTML = (await getBlockDOM(blockId)).dom;
+            
+            if (blockHTML) {
+                // 匹配不在HTML标签内的英文符号
+                const regex = /(?<!<[^>]*)(['"]|[.,;!?()\[\]{}<>])(?![^<]*>)/g;
+
+                // 记录引号状态
+                let singleQuoteIsOpen = false;
+                let doubleQuoteIsOpen = false;
+
+                // 符号映射表
+                const symbolMap = {
+                ".": "。",
+                ",": "，", 
+                ";": "；",
+                "!": "！", 
+                "?": "？",
+                "(": "（",
+                ")": "）",
+                };
+
+                // 替换符号
+                // First decode HTML entities
+                const decodedHTML = blockHTML.replace(/&quot;/g, '"')
+                    .replace(/&amp;/g, "&");
+                    
+                let updatedContent = decodedHTML.replace(regex, (match) => {
+                if (match === "'") {
+                    singleQuoteIsOpen = !singleQuoteIsOpen;
+                    return singleQuoteIsOpen ? '\u2018' : '\u2019';
+                }
+                if (match === '"') {
+                    doubleQuoteIsOpen = !doubleQuoteIsOpen;
+                    return doubleQuoteIsOpen ? '“' : '”';
+                    }
+                return symbolMap[match] || match;
+                });
+                // updatedContent的&lt；替换为&lt;，&gt；替换为&gt;
+                updatedContent = updatedContent.replace(/&lt；/g, '&lt;').replace(/&gt；/g, '&gt;');
+                // 更新块内容
+                if (updatedContent !== blockHTML) {
+                    console.log(updatedContent);
+                await updateBlock('dom', updatedContent, blockId);
+                }
+            }
+            }
+            } catch (e) {
+            console.error('Error converting punctuation:', e);
+            }
+            }
+        });
+
         // Add new menu item for multi-level list copying
         menu.addItem({
             icon: "iconPaste",
