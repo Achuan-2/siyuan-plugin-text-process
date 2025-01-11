@@ -602,7 +602,6 @@ export default class PluginText extends Plugin {
                                             const newId = newBlock[0].doOperations[0].id;
                                             let newDom = lute.Md2BlockDOM(lines[i]);
                                             newDom = newDom.replace(/data-node-id="[^"]*"/, `data-node-id="${newId}"`);
-                                            const emptyDom = `<div data-node-id="${newId}" data-node-index=\"5\"data-type="NodeParagraph" class="p"><div contenteditable="true" spellcheck="false"></div><div class="protyle-attr" contenteditable="false"><wbr></div></div>`;
                                             
                                             doOperations.push({
                                                 action: "insert",
