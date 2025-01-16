@@ -6,7 +6,7 @@
         "removeSpaces": "去除空格",
         "removeEmptyLines": "去除空行",
         "addEmptyLines": "添加空行",
-        "convertList": "列表样式保留",
+        "convertList": "Office列表粘贴适配",
         "removeSuperscript": "去除上标",
         "removeLinks": "链接转文字"
     },
