@@ -46,7 +46,8 @@ export default class PluginText extends Plugin {
             addEmptyLines: false, // 新增添加空行选项
             pptList: false,
             removeSuperscript: false,  // Add new option
-            removeLinks: false // Add new option
+            removeLinks: false, // Add new option
+            inlineLatex: false  // Add inlineLatex here
         }
         await this.loadData(STORAGE_NAME);
         console.log(this.data[STORAGE_NAME]);
@@ -54,7 +55,6 @@ export default class PluginText extends Plugin {
         this.settingUtils = new SettingUtils({
             plugin: this, name: SETTINGS_NAME
         });
-
 
         this.settingUtils.addItem({
             key: "copyFirstLevelSymbol",
@@ -135,11 +135,24 @@ export default class PluginText extends Plugin {
         let siyuan = event.detail.siyuanHTML;
         console.log(event.detail);
         if (this.data[STORAGE_NAME].LaTeXConversion) {
-            text = text.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // LaTeX 行间数学公式块，允许中间有换行
-            text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
-            siyuan = siyuan.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // LaTeX 行间数学公式块，允许中间有换行
-            siyuan = siyuan.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
+            if (this.data[STORAGE_NAME].inlineLatex) { // Change from this.settingUtils.get("inlineLatex")
+                // Convert block math to inline math and remove newlines
+                text = text.replace(/\\\[(.*?)\\\]/gs, (_, p1) => `$${p1.replace(/\n/g, '')}$`); // LaTeX block to inline
+                text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
+                // markdown数学公式块也要变为inline
+                text = text.replace(/\$\$(.*?)\$\$/gs, (_, p1) => `$${p1.replace(/\n/g, '')}$`); // Markdown block to inline
 
+
+                siyuan = siyuan.replace(/\\\[(.*?)\\\]/gs, (_, p1) => `$${p1.replace(/\n/g, '')}$`); // LaTeX block to inline
+                siyuan = siyuan.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
+                // markdown数学公式块也要变为inline
+                siyuan = siyuan.replace(/\$\$(.*?)\$\$/gs, (_, p1) => `$${p1.replace(/\n/g, '')}$`); // Markdown block to inline
+            } else {
+                text = text.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // LaTeX block math
+                text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
+                siyuan = siyuan.replace(/\\\[(.*?)\\\)/gs, '$$$$$1$$$$');
+                siyuan = siyuan.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
+            }
         }
         if (this.data[STORAGE_NAME].removeNewlines) {
             text = text.replace(/\n/g, ''); // 去除换行
@@ -197,6 +210,13 @@ export default class PluginText extends Plugin {
             label: this.i18n.pasteOptions.LaTeXConversion,
             click: (detail, event) => {
                 this.toggleOption("LaTeXConversion", detail);
+            }
+        });
+        menu.addItem({
+            icon: this.data[STORAGE_NAME].inlineLatex ? "iconSelect" : "iconClose",  // Add menu item for inlineLatex
+            label: this.i18n.settings.inlineLatex.title,
+            click: (detail, event) => {
+                this.toggleOption("inlineLatex", detail);
             }
         });
         menu.addItem({
@@ -592,7 +612,7 @@ export default class PluginText extends Plugin {
                                 let lute = window.Lute.New();
                                 let newBlockDom = lute.Md2BlockDOM(firstLine);
                                 newBlockDom = newBlockDom.replace(/data-node-id="[^"]*"/, `data-node-id="${blockId}"`);
-                                
+
                                 doOperations.push({
                                     action: "update",
                                     id: blockId,
@@ -614,7 +634,7 @@ export default class PluginText extends Plugin {
                                             const newId = newBlock[0].doOperations[0].id;
                                             let newDom = lute.Md2BlockDOM(lines[i]);
                                             newDom = newDom.replace(/data-node-id="[^"]*"/, `data-node-id="${newId}"`);
-                                            
+
                                             doOperations.push({
                                                 action: "insert",
                                                 id: newId,
@@ -795,6 +815,7 @@ export default class PluginText extends Plugin {
                             }
                         }
                     }
+
                 } catch (e) {
                     console.error('Error converting punctuation:', e);
                 }

@@ -36,6 +36,10 @@
         "copyHeadingSymbol": {
             "title": "Symbols for converting headings to plain text",
             "description": "Enter multiple symbols, different symbols will be used according to heading level</br> For example:</br> emoji：❤️⭐️💡</br> First symbol for h1, second for h2, and so on"
+        },
+        "inlineLatex": {
+            "title": "Convert to Inline Math",
+            "description": "When enabled, all math formulas (both LaTeX and Markdown) will be converted to inline format"
         }
     }
 }

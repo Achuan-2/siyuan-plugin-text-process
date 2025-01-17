@@ -1,7 +1,7 @@
 {
     "addTopBarIcon": "粘贴时自动处理",
     "pasteOptions": {
-        "LaTeXConversion": "LaTeX公式自动转换",
+        "LaTeXConversion": "公式自动转换",
         "removeNewlines": "去除换行",
         "removeSpaces": "去除空格",
         "removeEmptyLines": "去除空行",
@@ -36,6 +36,10 @@
         "copyHeadingSymbol": {
             "title": "复制到小红书的标题符号设置",
             "description": "输入多个符号，会根据标题层级来使用不同符号</br> 标题符号举例：</br> emoji：❤️⭐️💡</br> 第一个符号用于h1标题，第二个符号用于h2标题，以此类推"
+        },
+        "inlineLatex": {
+            "title": "公式转为行级公式",
+            "description": "开启后，所有的公式（包括LaTeX和Markdown）都会转换为行级数学公式"
         }
     }
 }
