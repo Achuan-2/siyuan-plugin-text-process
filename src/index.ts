@@ -425,11 +425,23 @@ export default class PluginText extends Plugin {
 
                             const formattedList = Array.from(listItems)
                                 .map(item => {
+                                    // 获取第一个 p，以确定是否要显示符号
+                                    const li = item.closest('.li');
+                                    const pSiblings = li.querySelectorAll(':scope > .p');
+                                    const isFirstP = pSiblings.length && pSiblings[0].isSameNode(item);
+
                                     const info = getListItemInfo(item);
-                                    const symbol = getSymbolForLevel(info, item);
-                                    const indentation = ' '.repeat(2 * Math.max(0, info.level)); // Add space based on level
-                                    return `${indentation}${symbol} ${item.textContent.trim()}`;
+                                    // 如果是第一个 p，调用原来的符号，否则用空格代替
+                                    const symbol = isFirstP ? getSymbolForLevel(info, item) : ' ';
+                                    const indentation = ' '.repeat(2 * Math.max(0, info.level));
+
+                                    let textContent = item.textContent.trim();
+                                    // 去除零宽字符 U+200B
+                                    textContent = textContent.replace(/\u200B/g, '').trim();
+
+                                    return textContent ? `${indentation}${symbol} ${textContent}` : null;
                                 })
+                                .filter(item => item !== null)
                                 .join('\n');
 
                             if (formattedList) {
