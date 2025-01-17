@@ -1,5 +1,5 @@
 ## v0.1.1 / 2025.01.17
-- ✨ office列表粘贴适配：支持粘贴ppt任务列表，从而与我的PPT插件生成的任务列表联动
+- ✨ office列表粘贴适配：支持粘贴ppt任务列表，从而与[我的PPT插件](https://github.com/Achuan-2/my_ppt_plugin)生成的任务列表联动
 - ✨ 复制到小红书优化：
     - 只有列表的第一个p标签才添加symbol
     - 去除因为图片而产生的symbol空行
