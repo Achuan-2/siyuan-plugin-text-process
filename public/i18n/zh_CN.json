@@ -18,7 +18,14 @@
         "convertToMarkdownList": "列表符号转markdown列表",
         "removeSuperscript": "去除上标",
         "removeLinks": "链接转文字",
-        "removeSpaces": "去除空格"
+        "removeSpaces": "去除空格",
+        "adjustImageWidth": "调整图片宽度",
+        "imageWidthDialog": {
+            "title": "调整图片宽度",
+            "placeholder": "输入宽度（像素）",
+            "confirm": "确认",
+            "cancel": "取消"
+        }
     },
     "messages": {
         "firstLevelCopied": "已复制内容",

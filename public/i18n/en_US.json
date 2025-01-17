@@ -18,7 +18,14 @@
         "convertToMarkdownList": "Convert to Markdown List",
         "removeSuperscript": "Remove Superscript",
         "removeLinks": "Remove Links Keep Text",
-        "removeSpaces": "Remove Spaces"
+        "removeSpaces": "Remove Spaces",
+        "adjustImageWidth": "Adjust Image Width",
+        "imageWidthDialog": {
+            "title": "Adjust Image Width",
+            "placeholder": "Enter width (pixels)",
+            "confirm": "Confirm",
+            "cancel": "Cancel"
+        }
     },
     "messages": {
         "firstLevelCopied": "First level items copied to clipboard",

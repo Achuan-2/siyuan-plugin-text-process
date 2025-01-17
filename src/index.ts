@@ -823,6 +823,71 @@ export default class PluginText extends Plugin {
             }
         });
 
+        // Add new menu item for adjusting image width
+        menuItems.push({
+            label: this.i18n.blockOperations.adjustImageWidth,
+            click: async () => {
+                let protyle = detail.protyle;
+                
+                // Create dialog
+                const dialog = new Dialog({
+                    title: this.i18n.blockOperations.imageWidthDialog.title,
+                    content: `<div class="b3-dialog__content">
+                        <input class="b3-text-field fn__flex-center" type="number" 
+                            placeholder="${this.i18n.blockOperations.imageWidthDialog.placeholder}">
+                            <span style="margin-left: 1em">px<span>
+                    </div>
+                    <div class="b3-dialog__action">
+                        <button class="b3-button b3-button--cancel">${this.i18n.blockOperations.imageWidthDialog.cancel}</button>
+                        <button class="b3-button b3-button--text">${this.i18n.blockOperations.imageWidthDialog.confirm}</button>
+                    </div>`,
+                    width: "320px",
+                });
+
+                const input = dialog.element.querySelector('input') as HTMLInputElement;
+                const confirmBtn = dialog.element.querySelector('.b3-button--text');
+                const cancelBtn = dialog.element.querySelector('.b3-button--cancel');
+                
+                // Focus input when dialog opens
+                setTimeout(() => input.focus(), 0);
+
+                cancelBtn.addEventListener('click', () => {
+                    dialog.destroy();
+                });
+
+                confirmBtn.addEventListener('click', async () => {
+                    const width = parseInt(input.value);
+                    if (width > 0) {
+                        try {
+                            for (const block of detail.blockElements) {
+                                const blockId = block.dataset.nodeId;
+                                const oldBlockDom = block.outerHTML;
+                                
+                                // Find all image spans and update their width
+                                let updatedContent = oldBlockDom;
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(oldBlockDom, 'text/html');
+                                const imgSpans = doc.querySelectorAll('span[data-type="img"] > span:nth-child(2)');
+                                
+                                if (imgSpans.length > 0) {
+                                    imgSpans.forEach(styleSpan => {
+                                        styleSpan.setAttribute('style', `width: ${width}px;`);
+                                    });
+                                    
+                                    updatedContent = doc.body.innerHTML;
+                                    await updateBlock('dom', updatedContent, blockId);
+                                    protyle.getInstance().updateTransaction(blockId, updatedContent, oldBlockDom);
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Error adjusting image width:', e);
+                        }
+                    }
+                    dialog.destroy();
+                });
+            }
+        });
+
         // Add new menu item for multi-level list copying
         menu.addItem({
             icon: "iconPaste",
