@@ -850,7 +850,12 @@ export default class PluginText extends Plugin {
                 
                 // Focus input when dialog opens
                 setTimeout(() => input.focus(), 0);
-
+                // Add enter key handling
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        confirmBtn.click();
+                    }
+                });
                 cancelBtn.addEventListener('click', () => {
                     dialog.destroy();
                 });
@@ -859,6 +864,9 @@ export default class PluginText extends Plugin {
                     const width = parseInt(input.value);
                     if (width > 0) {
                         try {
+                            let doOperations: IOperation[] = [];
+                            let undoOperations: IOperation[] = [];
+
                             for (const block of detail.blockElements) {
                                 const blockId = block.dataset.nodeId;
                                 const oldBlockDom = block.outerHTML;
@@ -876,12 +884,118 @@ export default class PluginText extends Plugin {
                                     
                                     updatedContent = doc.body.innerHTML;
                                     await updateBlock('dom', updatedContent, blockId);
-                                    protyle.getInstance().updateTransaction(blockId, updatedContent, oldBlockDom);
+
+                                    doOperations.push({
+                                        action: "update",
+                                        id: blockId,
+                                        data: updatedContent
+                                    });
+
+                                    undoOperations.push({
+                                        action: "update", 
+                                        id: blockId,
+                                        data: oldBlockDom
+                                    });
                                 }
+                            }
+
+                            if (doOperations.length > 0) {
+                                protyle.getInstance().transaction(doOperations, undoOperations);
                             }
                         } catch (e) {
                             console.error('Error adjusting image width:', e);
                         }
+                    }
+                    dialog.destroy();
+                });
+            }
+        });
+
+        // Add new menu item for setting code block language
+        menuItems.push({
+            label: this.i18n.blockOperations.setCodeLanguage,
+            click: async () => {
+                let protyle = detail.protyle;
+                
+                // Create dialog
+                const dialog = new Dialog({
+                    title: this.i18n.blockOperations.codeLanguageDialog.title,
+                    content: `<div class="b3-dialog__content">
+                        <input class="b3-text-field fn__flex-center" type="text"  style="width: 90%"
+                            placeholder="${this.i18n.blockOperations.codeLanguageDialog.placeholder}">
+                    </div>
+                    <div class="b3-dialog__action">
+                        <button class="b3-button b3-button--cancel">${this.i18n.blockOperations.codeLanguageDialog.cancel}</button>
+                        <button class="b3-button b3-button--text">${this.i18n.blockOperations.codeLanguageDialog.confirm}</button>
+                    </div>`,
+                    width: "250px",
+                });
+                const input = dialog.element.querySelector('input') as HTMLInputElement;
+                const confirmBtn = dialog.element.querySelector('.b3-button--text');
+                const cancelBtn = dialog.element.querySelector('.b3-button--cancel');
+                
+                // Focus input when dialog opens
+                setTimeout(() => input.focus(), 0);
+
+                // Add enter key handling
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        confirmBtn.click();
+                    }
+                });
+
+                cancelBtn.addEventListener('click', () => {
+                    dialog.destroy();
+                });
+
+                confirmBtn.addEventListener('click', async () => {
+                    const language = input.value.trim();
+                    try {
+                        let doOperations: IOperation[] = [];
+                        let undoOperations: IOperation[] = [];
+
+                        for (const block of detail.blockElements) {
+                            const blockId = block.dataset.nodeId;
+                            if (block.dataset.type === "NodeCodeBlock") {
+                                const content = (await getBlockKramdown(blockId)).kramdown;
+                                const oldBlockDom = block.outerHTML;
+                                
+                                // Extract the code content between ``` marks
+                                const codeMatch = content.match(/```[^\n]*\n([\s\S]*?)```/);
+                                if (codeMatch) {
+                                    const codeContent = codeMatch[1];
+                                    // Create new markdown with the specified language
+                                    const newContent = '```' + language + '\n' + codeContent + '```';
+                                    
+                                    // Update block content
+                                    await updateBlock('markdown', newContent, blockId);
+                                    
+                                    // Create new DOM for the updated content
+                                    let lute = window.Lute.New();
+                                    let newBlockDom = lute.Md2BlockDOM(newContent);
+                                    newBlockDom = newBlockDom.replace(/data-node-id="[^"]*"/, `data-node-id="${blockId}"`);
+
+                                    // Add to operations arrays
+                                    doOperations.push({
+                                        action: "update",
+                                        id: blockId,
+                                        data: newBlockDom
+                                    });
+                                    undoOperations.push({
+                                        action: "update",
+                                        id: blockId,
+                                        data: oldBlockDom
+                                    });
+                                }
+                            }
+                        }
+
+                        // Execute transaction if there are operations
+                        if (doOperations.length > 0) {
+                            protyle.getInstance().transaction(doOperations, undoOperations);
+                        }
+                    } catch (e) {
+                        console.error('Error setting code language:', e);
                     }
                     dialog.destroy();
                 });

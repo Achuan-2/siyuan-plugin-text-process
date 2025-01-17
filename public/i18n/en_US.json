@@ -25,6 +25,13 @@
             "placeholder": "Enter width (pixels)",
             "confirm": "Confirm",
             "cancel": "Cancel"
+        },
+        "setCodeLanguage": "Set Code Language",
+        "codeLanguageDialog": {
+            "title": "Set Code Language",
+            "placeholder": "Enter language (e.g. javascript, python, java)",
+            "confirm": "Confirm",
+            "cancel": "Cancel"
         }
     },
     "messages": {

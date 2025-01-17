@@ -25,6 +25,13 @@
             "placeholder": "输入宽度（像素）",
             "confirm": "确认",
             "cancel": "取消"
+        },
+        "setCodeLanguage": "设置代码块语言",
+        "codeLanguageDialog": {
+            "title": "设置代码块语言",
+            "placeholder": "输入语言，如: python",
+            "confirm": "确认",
+            "cancel": "取消"
         }
     },
     "messages": {
