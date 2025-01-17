@@ -133,7 +133,7 @@ export default class PluginText extends Plugin {
         let text = event.detail.textPlain;
         let html = event.detail.textHTML;
         let siyuan = event.detail.siyuanHTML;
-        console.log(event.detail);
+        // console.log(event.detail);
         if (this.data[STORAGE_NAME].LaTeXConversion) {
             if (this.data[STORAGE_NAME].inlineLatex) { // Change from this.settingUtils.get("inlineLatex")
                 // Convert block math to inline math and remove newlines
@@ -186,6 +186,7 @@ export default class PluginText extends Plugin {
             // html = html.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
             html = convertOfficeListToHtml(html);
+            console.log(html);
 
         }
         if (this.data[STORAGE_NAME].removeSuperscript) {

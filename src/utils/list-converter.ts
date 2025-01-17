@@ -129,13 +129,24 @@ function convertPPTListToHtml(htmlString: string): string {
     const result = [];
     let listElements = [];
 
-    function determineListType(element: Element): string {
+    function determineListType(element: Element): { type: string; checked?: boolean } {
         const bulletSpan = element.querySelector('span[style*="mso-special-format"]');
-        if (!bulletSpan) return 'ul';
+        if (!bulletSpan) return { type: 'ul' };
 
         const style = bulletSpan.getAttribute('style') || '';
+        const content = bulletSpan.textContent.trim();
+
+        // Check if it's a task list
+        if (content === '☑' || content === '☐') {
+            return {
+                type: 'task',
+                checked: content === '☑'
+            };
+        }
+
+        // Check for numbered list
         const isOrderedList = style.includes('numbullet');
-        return isOrderedList ? 'ol' : 'ul';
+        return { type: isOrderedList ? 'ol' : 'ul' };
     }
 
     function processListGroup(elements: Element[]): string {
@@ -150,39 +161,49 @@ function convertPPTListToHtml(htmlString: string): string {
             const style = div.getAttribute('style') || '';
             const marginMatch = style.match(/margin-left:([.\d]+)in/);
             const currentMargin = parseFloat(marginMatch[1]);
-            const listType = determineListType(div);
+            const listInfo = determineListType(div);
 
+            // Create appropriate list element
             if (!currentList) {
-                currentList = document.createElement(listType);
+                currentList = document.createElement(listInfo.type === 'task' ? 'ul' : listInfo.type);
+                if (listInfo.type === 'task') {
+                    currentList.setAttribute('data-type', 'task');
+                }
                 fragment.appendChild(currentList);
-                listStack.push({ element: currentList, type: listType, margin: currentMargin });
+                listStack.push({ element: currentList, type: listInfo.type, margin: currentMargin });
             } else if (currentMargin > previousMargin) {
-                const newList = document.createElement(listType);
+                const newList = document.createElement(listInfo.type === 'task' ? 'ul' : listInfo.type);
+                if (listInfo.type === 'task') {
+                    newList.setAttribute('data-type', 'task');
+                }
                 currentList.lastElementChild.appendChild(newList);
                 currentList = newList;
-                listStack.push({ element: currentList, type: listType, margin: currentMargin });
+                listStack.push({ element: currentList, type: listInfo.type, margin: currentMargin });
             } else if (currentMargin < previousMargin) {
                 while (listStack.length > 0 && listStack[listStack.length - 1].margin > currentMargin) {
                     listStack.pop();
                 }
                 currentList = listStack[listStack.length - 1].element;
-            } else if (currentMargin === previousMargin && listType !== listStack[listStack.length - 1].type) {
-                const newList = document.createElement(listType);
-                if (listStack.length > 1) {
-                    currentList.parentElement.parentElement.appendChild(newList);
-                } else {
-                    fragment.appendChild(newList);
-                }
-                currentList = newList;
-                listStack[listStack.length - 1] = { element: currentList, type: listType, margin: currentMargin };
             }
 
             const li = document.createElement('li');
+            if (listInfo.type === 'task') {
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                if (listInfo.checked) {
+                    checkbox.setAttribute('checked', 'checked');  // 使用setAttribute来设置checked属性
+                }
+                li.appendChild(checkbox);
+                li.classList.add('task-list-item');
+            }
+
             const divClone = div.cloneNode(true);
             divClone.querySelectorAll('span[style*="mso-special-format"]').forEach(span => {
                 span.remove();
             });
-            li.innerHTML = divClone.innerHTML;
+            const contentSpan = document.createElement('span');
+            contentSpan.innerHTML = divClone.innerHTML;
+            li.appendChild(contentSpan);
             currentList.appendChild(li);
 
             previousMargin = currentMargin;
