@@ -26,6 +26,13 @@
             "confirm": "确认",
             "cancel": "取消"
         },
+        "adjustImageHeight": "调整图片高度",
+        "imageHeightDialog": {
+            "title": "调整图片高度",
+            "placeholder": "输入高度（像素）",
+            "confirm": "确认",
+            "cancel": "取消"
+        },
         "setCodeLanguage": "设置代码块语言",
         "codeLanguageDialog": {
             "title": "设置代码块语言",

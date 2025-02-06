@@ -873,16 +873,19 @@ export default class PluginText extends Plugin {
                                 
                                 // Find all image spans and update their width
                                 let updatedContent = oldBlockDom;
-                                const parser = new DOMParser();
-                                const doc = parser.parseFromString(oldBlockDom, 'text/html');
-                                const imgSpans = doc.querySelectorAll('span[data-type="img"] > span:nth-child(2)');
-                                
-                                if (imgSpans.length > 0) {
-                                    imgSpans.forEach(styleSpan => {
+                                const imgHeightSpans = block.querySelectorAll('span[data-type="img"] > span>img');
+                                const imgWidthSpans = block.querySelectorAll('span[data-type="img"] > span:nth-child(2)');
+
+                                if (imgHeightSpans.length > 0) {
+                                    imgHeightSpans.forEach(styleSpan => {
+                                        styleSpan.setAttribute('style', "");
+                                    });
+                                    imgWidthSpans.forEach(styleSpan => {
                                         styleSpan.setAttribute('style', `width: ${width}px;`);
                                     });
-                                    
-                                    updatedContent = doc.body.innerHTML;
+
+
+                                    updatedContent = block.outerHTML;
                                     await updateBlock('dom', updatedContent, blockId);
 
                                     doOperations.push({
@@ -911,6 +914,96 @@ export default class PluginText extends Plugin {
             }
         });
 
+        menuItems.push({
+            label: this.i18n.blockOperations.adjustImageHeight,
+            click: async () => {
+                let protyle = detail.protyle;
+
+                // Create dialog
+                const dialog = new Dialog({
+                    title: this.i18n.blockOperations.imageHeightDialog.title,
+                    content: `<div class="b3-dialog__content">
+                        <input class="b3-text-field fn__flex-center" type="number" 
+                            placeholder="${this.i18n.blockOperations.imageHeightDialog.placeholder}">
+                            <span style="margin-left: 1em">px<span>
+                    </div>
+                    <div class="b3-dialog__action">
+                        <button class="b3-button b3-button--cancel">${this.i18n.blockOperations.imageHeightDialog.cancel}</button>
+                        <button class="b3-button b3-button--text">${this.i18n.blockOperations.imageHeightDialog.confirm}</button>
+                    </div>`,
+                    width: "320px",
+                });
+
+                const input = dialog.element.querySelector('input') as HTMLInputElement;
+                const confirmBtn = dialog.element.querySelector('.b3-button--text');
+                const cancelBtn = dialog.element.querySelector('.b3-button--cancel');
+
+                // Focus input when dialog opens
+                setTimeout(() => input.focus(), 0);
+                // Add enter key handling
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        confirmBtn.click();
+                    }
+                });
+                cancelBtn.addEventListener('click', () => {
+                    dialog.destroy();
+                });
+
+                confirmBtn.addEventListener('click', async () => {
+                    const height = parseInt(input.value);
+                    if (height > 0) {
+                        try {
+                            let doOperations: IOperation[] = [];
+                            let undoOperations: IOperation[] = [];
+
+                            for (const block of detail.blockElements) {
+                                const blockId = block.dataset.nodeId;
+                                const oldBlockDom = block.outerHTML;
+
+                                // Find all image spans and update their height
+                                let updatedContent = oldBlockDom;
+                                const imgHeightSpans = block.querySelectorAll('span[data-type="img"] > span>img');
+                                const imgWidthSpans = block.querySelectorAll('span[data-type="img"] > span:nth-child(2)');
+
+                                if (imgHeightSpans.length > 0) {
+                                    imgHeightSpans.forEach(styleSpan => {
+                                        styleSpan.setAttribute('style', `height: ${height}px;`);
+                                    });
+                                    // imgWidthSpan的style设置为空
+                                    imgWidthSpans.forEach(styleSpan => {
+                                        styleSpan.setAttribute('style', '');
+                                    });
+
+
+                                    updatedContent = block.outerHTML;
+                                    await updateBlock('dom', updatedContent, blockId);
+
+                                    doOperations.push({
+                                        action: "update",
+                                        id: blockId,
+                                        data: updatedContent
+                                    });
+
+                                    undoOperations.push({
+                                        action: "update",
+                                        id: blockId,
+                                        data: oldBlockDom
+                                    });
+                                }
+                            }
+
+                            if (doOperations.length > 0) {
+                                protyle.getInstance().transaction(doOperations, undoOperations);
+                            }
+                        } catch (e) {
+                            console.error('Error adjusting image height:', e);
+                        }
+                    }
+                    dialog.destroy();
+                });
+            }
+        });
         // Add new menu item for setting code block language
         menuItems.push({
             label: this.i18n.blockOperations.setCodeLanguage,
