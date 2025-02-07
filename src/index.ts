@@ -762,7 +762,35 @@ export default class PluginText extends Plugin {
                 }
             }
         });
-
+        // Add after the removeSpaces menu item in handleBlockMenu
+        menuItems.push({
+            label: this.i18n.blockOperations.removeNewlines,
+            click: async () => {
+                let protyle = detail.protyle;
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const blockHTML = block.outerHTML;
+                        if (blockHTML) {
+                            // Remove br tags and merge p tags
+                            let updatedContent = blockHTML;
+                            // Remove <br> tags
+                            updatedContent = updatedContent.replace(/<br\s*\/?>/g, '');
+                            // Merge adjacent paragraph contents
+                            updatedContent = updatedContent.replace(/<\/p>\s*<p[^>]*>/g, '');
+                            // 去除\n
+                            updatedContent = updatedContent.replace(/\n/g, '');
+                            if (updatedContent !== blockHTML) {
+                                await updateBlock('dom', updatedContent, blockId);
+                                protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error removing newlines:', e);
+                }
+            }
+        });
         // Add new menu item for converting punctuation
         menuItems.push({
             label: "英文符号转中文符号",

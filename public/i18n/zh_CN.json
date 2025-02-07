@@ -19,6 +19,7 @@
         "removeSuperscript": "去除上标",
         "removeLinks": "链接转文字",
         "removeSpaces": "去除空格",
+        "removeNewlines": "去除换行",
         "adjustImageWidth": "调整图片宽度",
         "imageWidthDialog": {
             "title": "调整图片宽度",
