@@ -40,7 +40,8 @@
             "placeholder": "输入语言，如: python",
             "confirm": "确认",
             "cancel": "取消"
-        }
+        },
+        "convertReference": "块引转超链接"
     },
     "messages": {
         "firstLevelCopied": "已复制内容",

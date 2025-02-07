@@ -856,7 +856,7 @@ export default class PluginText extends Plugin {
             label: this.i18n.blockOperations.adjustImageWidth,
             click: async () => {
                 let protyle = detail.protyle;
-                
+
                 // Create dialog
                 const dialog = new Dialog({
                     title: this.i18n.blockOperations.imageWidthDialog.title,
@@ -875,7 +875,7 @@ export default class PluginText extends Plugin {
                 const input = dialog.element.querySelector('input') as HTMLInputElement;
                 const confirmBtn = dialog.element.querySelector('.b3-button--text');
                 const cancelBtn = dialog.element.querySelector('.b3-button--cancel');
-                
+
                 // Focus input when dialog opens
                 setTimeout(() => input.focus(), 0);
                 // Add enter key handling
@@ -898,7 +898,7 @@ export default class PluginText extends Plugin {
                             for (const block of detail.blockElements) {
                                 const blockId = block.dataset.nodeId;
                                 const oldBlockDom = block.outerHTML;
-                                
+
                                 // Find all image spans and update their width
                                 let updatedContent = oldBlockDom;
                                 const imgHeightSpans = block.querySelectorAll('span[data-type="img"] > span>img');
@@ -923,7 +923,7 @@ export default class PluginText extends Plugin {
                                     });
 
                                     undoOperations.push({
-                                        action: "update", 
+                                        action: "update",
                                         id: blockId,
                                         data: oldBlockDom
                                     });
@@ -1037,7 +1037,7 @@ export default class PluginText extends Plugin {
             label: this.i18n.blockOperations.setCodeLanguage,
             click: async () => {
                 let protyle = detail.protyle;
-                
+
                 // Create dialog
                 const dialog = new Dialog({
                     title: this.i18n.blockOperations.codeLanguageDialog.title,
@@ -1054,7 +1054,7 @@ export default class PluginText extends Plugin {
                 const input = dialog.element.querySelector('input') as HTMLInputElement;
                 const confirmBtn = dialog.element.querySelector('.b3-button--text');
                 const cancelBtn = dialog.element.querySelector('.b3-button--cancel');
-                
+
                 // Focus input when dialog opens
                 setTimeout(() => input.focus(), 0);
 
@@ -1080,17 +1080,17 @@ export default class PluginText extends Plugin {
                             if (block.dataset.type === "NodeCodeBlock") {
                                 const content = (await getBlockKramdown(blockId)).kramdown;
                                 const oldBlockDom = block.outerHTML;
-                                
+
                                 // Extract the code content between ``` marks
                                 const codeMatch = content.match(/```[^\n]*\n([\s\S]*?)```/);
                                 if (codeMatch) {
                                     const codeContent = codeMatch[1];
                                     // Create new markdown with the specified language
                                     const newContent = '```' + language + '\n' + codeContent + '```';
-                                    
+
                                     // Update block content
                                     await updateBlock('markdown', newContent, blockId);
-                                    
+
                                     // Create new DOM for the updated content
                                     let lute = window.Lute.New();
                                     let newBlockDom = lute.Md2BlockDOM(newContent);
@@ -1123,6 +1123,45 @@ export default class PluginText extends Plugin {
             }
         });
 
+
+        menuItems.push({
+            label: this.i18n.blockOperations.convertReference,
+            click: async () => {
+                let protyle = detail.protyle;
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const oldBlockDom = block.outerHTML;
+
+                        // Find all block reference spans
+                        const refSpans = block.querySelectorAll('span[data-type="block-ref"]');
+
+                        if (refSpans.length > 0) {
+                            let updatedContent = oldBlockDom;
+
+                            for (const refSpan of refSpans) {
+                                const refId = refSpan.getAttribute('data-id');
+                                const refText = refSpan.textContent;
+
+                                // Create new link element
+                                const linkHTML = `<span data-type="a" data-href="siyuan://blocks/${refId}">${refText}</span>`;
+
+                                // Replace ref span with link span in HTML
+                                updatedContent = updatedContent.replace(refSpan.outerHTML, linkHTML);
+                            }
+
+                            // Update block with new content
+                            if (updatedContent !== oldBlockDom) {
+                                await updateBlock('dom', updatedContent, blockId);
+                                protyle.getInstance().updateTransaction(blockId, updatedContent, oldBlockDom);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error converting references to links:', e);
+                }
+            }
+        });
         // Add new menu item for multi-level list copying
         menu.addItem({
             icon: "iconPaste",

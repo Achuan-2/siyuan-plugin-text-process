@@ -40,7 +40,8 @@
             "placeholder": "Enter language (e.g. javascript, python, java)",
             "confirm": "Confirm",
             "cancel": "Cancel"
-        }
+        },
+        "convertReference": "Convert Block Reference to Link"
     },
     "messages": {
         "firstLevelCopied": "First level items copied to clipboard",
