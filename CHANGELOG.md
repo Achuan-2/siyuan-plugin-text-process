@@ -1,3 +1,15 @@
+
+## v0.1.3 / 2025.02.16
+- ✨ 支持批量设置图片高度
+- ✨ 支持块引转块超链接
+- ✨ 块菜单支持去除换行
+
+--- 
+
+- ✨ Support setting image height in bulk
+- ✨ Support converting block references to block hyperlinks
+- ✨ Block menu supports removing line breaks
+- 
 ## v0.1.2 / 2025.01.17
 
 - ✨ 支持批量设置代码语言
