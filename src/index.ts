@@ -133,7 +133,7 @@ export default class PluginText extends Plugin {
         let text = event.detail.textPlain;
         let html = event.detail.textHTML;
         let siyuan = event.detail.siyuanHTML;
-        // console.log(event.detail);
+        console.log(event.detail);
         if (this.data[STORAGE_NAME].LaTeXConversion) {
             if (this.data[STORAGE_NAME].inlineLatex) { // Change from this.settingUtils.get("inlineLatex")
                 // Convert block math to inline math and remove newlines
@@ -142,16 +142,9 @@ export default class PluginText extends Plugin {
                 // markdown数学公式块也要变为inline
                 text = text.replace(/\$\$(.*?)\$\$/gs, (_, p1) => `$${p1.replace(/\n/g, '')}$`); // Markdown block to inline
 
-
-                siyuan = siyuan.replace(/\\\[(.*?)\\\]/gs, (_, p1) => `$${p1.replace(/\n/g, '')}$`); // LaTeX block to inline
-                siyuan = siyuan.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
-                // markdown数学公式块也要变为inline
-                siyuan = siyuan.replace(/\$\$(.*?)\$\$/gs, (_, p1) => `$${p1.replace(/\n/g, '')}$`); // Markdown block to inline
             } else {
                 text = text.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // LaTeX block math
                 text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
-                siyuan = siyuan.replace(/\\\[(.*?)\\\)/gs, '$$$$$1$$$$');
-                siyuan = siyuan.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
             }
         }
         if (this.data[STORAGE_NAME].removeNewlines) {
