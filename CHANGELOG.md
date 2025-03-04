@@ -1,4 +1,12 @@
 
+## v0.1.4 / 2025.03.05
+- 🐛 fix(粘贴)：开启公式自动转化，无法右键粘贴 [#17](https://github.com/Achuan-2/siyuan-plugin-paste-process/issues/17)
+
+---
+
+- 🐛 fix(Paste): When the formula is automatically converted, the right-click paste is invalid
+
+
 ## v0.1.3 / 2025.02.16
 - ✨ 支持批量设置图片高度
 - ✨ 支持块引转块超链接
