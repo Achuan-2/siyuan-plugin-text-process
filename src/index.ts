@@ -349,120 +349,105 @@ export default class PluginText extends Plugin {
 
             }
         }
-
         menuItems.push({
             label: this.i18n.blockOperations.copyMultiLevel,
             click: async () => {
                 try {
-                    const symbols = [...this.settingUtils.get("copyMultiLevelSymbol")].filter(char => char !== '️'); // Filter out empty strings and trim any extra spaces
-                    // Replace all emojis with simple text characters to avoid extra spaces
-                    const headingSymbols = [...this.settingUtils.get("copyHeadingSymbol")]
-                        .filter(char => char !== '️');// Filter out empty strings and trim any extra spaces
+                    const symbols = [...this.settingUtils.get("copyMultiLevelSymbol")].filter(char => char !== '️');
+                    const headingSymbols = [...this.settingUtils.get("copyHeadingSymbol")].filter(char => char !== '️');
                     let allBlocksContent = [];
 
                     for (const block of detail.blockElements) {
                         const blockId = block.dataset.nodeId;
 
-                        // Check if block is a heading
+                        // 处理标题
                         if (block.dataset.type === "NodeHeading") {
-
-                            // Get heading level (1-6)
                             const level = parseInt(Array.from(block.classList)
                                 .find(c => c.match(/h[1-6]/))
                                 .substring(1)) - 1;
-                            console.log(level);
                             const symbol = headingSymbols.length > 0 ?
                                 headingSymbols[level % headingSymbols.length] :
                                 '❤️';
-
                             allBlocksContent.push(`${symbol} ${block.textContent.trim()}`);
                         }
-                        // Check if block is a list
-                        else if (block.dataset.type === "NodeList") {
-                            // Helper function to convert numbers to emoji digits
+                        // 处理列表（包括 NodeList 和 NodeListItem）
+                        else if (block.dataset.type === "NodeList" || block.dataset.type === "NodeListItem") {
                             function numberToEmoji(num) {
                                 const emojiDigits = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
                                 return num.toString().split('').map(d => emojiDigits[parseInt(d)]).join('');
                             }
-                            function getListItemInfo(element) {
-                                let level = 0;
-                                let counters = new Map();
-                                let listTypes = [];
 
-                                const rootList = document.querySelector(`[data-node-id="${blockId}"]`);
+                            function processListItem(item, rootElement, results = [], level = 0, counters = {}) {
+                                const li = item.closest('.li') || item;
+                                const parentList = li.parentElement.closest('.list');
+                                const isOrdered = parentList?.getAttribute('data-subtype') === 'o';
+                                const isTaskList = parentList?.getAttribute('data-subtype') === 't';
 
-                                let parent = element.parentElement;
-                                while (parent && !parent.isSameNode(rootList.parentElement)) {
-                                    if (parent.classList.contains('list')) {
-                                        level++;
-                                        const isOrdered = parent.getAttribute('data-subtype') === 'o';
-                                        const isTaskList = parent.getAttribute('data-subtype') === 't';
-                                        listTypes.unshift({ isOrdered, isTaskList });
-
-                                        if (isOrdered) {
-                                            let count = 1;
-                                            let sibling = element.closest('.li');
-                                            while (sibling.previousElementSibling) {
-                                                count++;
-                                                sibling = sibling.previousElementSibling;
-                                            }
-                                            counters.set(level, count);
-                                        }
+                                // 计算当前项的序号（仅对有序列表）
+                                let symbol;
+                                if (isTaskList) {
+                                    const taskSymbols = [['✅', '❌']];
+                                    const levelSymbols = taskSymbols[level % taskSymbols.length];
+                                    symbol = li.classList.contains('protyle-task--done') ? levelSymbols[0] : levelSymbols[1];
+                                } else if (isOrdered) {
+                                    // 为当前层级初始化计数器
+                                    if (!counters[level]) counters[level] = 0;
+                                    // 计算当前项在同级中的位置
+                                    let sibling = li;
+                                    counters[level] = 1;
+                                    while (sibling.previousElementSibling) {
+                                        counters[level]++;
+                                        sibling = sibling.previousElementSibling;
                                     }
-                                    parent = parent.parentElement;
-                                }
-                                return {
-                                    level: level - 1,
-                                    listTypes: listTypes,
-                                    counters: counters
-                                };
-                            }
-
-                            function getSymbolForLevel(info, listItem) {
-                                const level = info.level;
-                                const listType = info.listTypes[level];
-
-                                if (listType.isTaskList) {
-                                    const symbols = [['✅', '❌'], ['✔', '✖️']];
-                                    const levelSymbols = symbols[level % symbols.length];
-                                    return listItem.parentElement.classList.contains('protyle-task--done') ? levelSymbols[0] : levelSymbols[1];
-                                } else if (listType.isOrdered) {
-                                    return numberToEmoji(info.counters.get(level + 1));
+                                    symbol = numberToEmoji(counters[level]);
                                 } else {
-                                    return symbols.length === 0 ? '■' : symbols[level % symbols.length];
+                                    symbol = symbols.length === 0 ? '■' : symbols[level % symbols.length];
                                 }
+
+                                const indentation = ' '.repeat(2 * Math.max(0, level));
+
+                                // 处理当前项的文本内容
+                                const pElements = li.querySelectorAll(':scope > .p');
+                                if (pElements.length > 0) {
+                                    Array.from(pElements).forEach((p, index) => {
+                                        let textContent = p.textContent.trim().replace(/\u200B/g, '');
+                                        if (textContent) {
+                                            const itemSymbol = index === 0 ? symbol : ' ';
+                                            results.push(`${indentation}${itemSymbol} ${textContent}`);
+                                        }
+                                    });
+                                }
+
+                                // 递归处理子列表
+                                const subList = li.querySelector(':scope > .list');
+                                if (subList) {
+                                    const subItems = subList.querySelectorAll(':scope > .li');
+                                    subItems.forEach(subItem => {
+                                        processListItem(subItem, rootElement, results, level + 1, counters);
+                                    });
+                                }
+
+                                return results;
                             }
 
+                            let formattedList;
+                            if (block.dataset.type === "NodeList") {
+                                const listItems = document.querySelector(`[data-node-id="${blockId}"]`)
+                                    .querySelectorAll(':scope > .li');
+                                formattedList = [];
+                                listItems.forEach(item => {
+                                    processListItem(item, block, formattedList);
+                                });
+                            } else {
+                                // 处理 NodeListItem，包括其所有子层级
+                                formattedList = processListItem(block, block.closest('[data-type="NodeList"]') || block);
+                            }
 
-                            const listItems = document.querySelector(`[data-node-id="${blockId}"]`)
-                                .querySelectorAll('.li > .p');
-
-                            const formattedList = Array.from(listItems)
-                                .map(item => {
-                                    // 获取第一个 p，以确定是否要显示符号
-                                    const li = item.closest('.li');
-                                    const pSiblings = li.querySelectorAll(':scope > .p');
-                                    const isFirstP = pSiblings.length && pSiblings[0].isSameNode(item);
-
-                                    const info = getListItemInfo(item);
-                                    // 如果是第一个 p，调用原来的符号，否则用空格代替
-                                    const symbol = isFirstP ? getSymbolForLevel(info, item) : ' ';
-                                    const indentation = ' '.repeat(2 * Math.max(0, info.level));
-
-                                    let textContent = item.textContent.trim();
-                                    // 去除零宽字符 U+200B
-                                    textContent = textContent.replace(/\u200B/g, '').trim();
-
-                                    return textContent ? `${indentation}${symbol} ${textContent}` : null;
-                                })
-                                .filter(item => item !== null)
-                                .join('\n');
-
-                            if (formattedList) {
-                                allBlocksContent.push(formattedList);
+                            if (formattedList.length > 0) {
+                                allBlocksContent.push(formattedList.join('\n'));
                             }
                         } else {
-                            // For non-list blocks, just get the text content
+                            // 处理其他类型的块
                             const content = block.textContent.trim();
                             if (content) {
                                 allBlocksContent.push(content);
@@ -471,7 +456,6 @@ export default class PluginText extends Plugin {
                     }
 
                     if (allBlocksContent.length > 0) {
-                        // Remove zero-width space characters (U+200B)
                         const finalContent = allBlocksContent.join('\n').replace(/\u200B/g, '');
                         navigator.clipboard.writeText(finalContent);
                         showMessage(this.i18n.messages.multiLevelCopied);
@@ -481,7 +465,6 @@ export default class PluginText extends Plugin {
                 }
             }
         });
-
         // Only show merge option when multiple blocks are selected
         if (detail.blockElements && detail.blockElements.length > 1) {
             menuItems.push({
