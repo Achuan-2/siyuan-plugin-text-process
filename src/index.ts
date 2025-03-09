@@ -626,21 +626,22 @@ export default class PluginText extends Plugin {
                                         const newBlock = await insertBlock('markdown', lines[i], null, previousId, null);
                                         if (newBlock) {
                                             const newId = newBlock[0].doOperations[0].id;
-                                            let newDom = lute.Md2BlockDOM(lines[i]);
-                                            newDom = newDom.replace(/data-node-id="[^"]*"/, `data-node-id="${newId}"`);
+                                            // 🐛Fix(拆分块): 拆分块的时候transaction的insert和inserBlock API会冲突，暂时先取消撤回机制了
+                                            // let newDom = lute.Md2BlockDOM(lines[i]);
+                                            // newDom = newDom.replace(/data-node-id="[^"]*"/, `data-node-id="${newId}"`);
 
-                                            doOperations.push({
-                                                action: "insert",
-                                                id: newId,
-                                                data: newDom,
-                                                previousID: previousId,
-                                                parentID: protyle.block.id
-                                            });
-                                            undoOperations.push({
-                                                action: "delete",
-                                                id: newId,
-                                                data: null
-                                            });
+                                            // doOperations.push({
+                                            //     action: "insert",
+                                            //     id: newId,
+                                            //     data: newDom,
+                                            //     previousID: previousId,
+                                            //     parentID: protyle.block.id
+                                            // });
+                                            // undoOperations.push({
+                                            //     action: "delete",
+                                            //     id: newId,
+                                            //     data: null
+                                            // });
 
                                             previousId = newId;
                                         }
