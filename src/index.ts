@@ -373,8 +373,14 @@ export default class PluginText extends Plugin {
                         // 处理列表（包括 NodeList 和 NodeListItem）
                         else if (block.dataset.type === "NodeList" || block.dataset.type === "NodeListItem") {
                             function numberToEmoji(num) {
-                                const emojiDigits = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
-                                return num.toString().split('').map(d => emojiDigits[parseInt(d)]).join('');
+                                // ⓿ ❶、❷、❸、❹、❺、❻、❼、❽、❾、❿、⓫、⓬、⓭、⓮、⓯、⓰、⓱、⓲、⓳、⓴
+                                const emojiDigits = ['⓿', '➊', '➋', '➌', '➍', '➎', '➏', '➐', '➑', '➒', '➓', '⓫', '⓬', '⓭', '⓮', '⓯', '⓰', '⓱', '⓲', '⓳', '⓴'];
+                                
+                                if (num <= 20) {
+                                    return emojiDigits[num];
+                                } else {
+                                    return num.toString().split('').map(d => emojiDigits[parseInt(d)]).join('');
+                                }
                             }
 
                             function processListItem(item, rootElement, results = [], level = 0, counters = {}) {
@@ -386,7 +392,7 @@ export default class PluginText extends Plugin {
                                 // 计算当前项的序号（仅对有序列表）
                                 let symbol;
                                 if (isTaskList) {
-                                    const taskSymbols = [['✅', '❌']];
+                                    const taskSymbols = [['✅', '⬜']];
                                     const levelSymbols = taskSymbols[level % taskSymbols.length];
                                     symbol = li.classList.contains('protyle-task--done') ? levelSymbols[0] : levelSymbols[1];
                                 } else if (isOrdered) {
