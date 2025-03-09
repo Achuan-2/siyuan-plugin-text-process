@@ -492,76 +492,69 @@ export default class PluginText extends Plugin {
                         const firstBlockId = detail.blockElements[0].dataset.nodeId;
                         const firstBlockOldDom = detail.blockElements[0].outerHTML;
                         let mergedContent = '';
-                        let deletedBlocksData = [];
 
-                        // Gather content from all blocks using SQL
+                        // First pass: gather content and prepare frontend updates
+                        let allBlocksContent = [];
                         for (const block of detail.blockElements) {
-                            const blockId = block.dataset.nodeId;
-                            const content = (await getBlockKramdown(blockId)).kramdown;
-                            // Split content into lines
-                            function cleanText(text) {
-                                let lines = text.split('\n');
-                                lines.pop(); // Remove last line
-                                return lines.join('\n');
-                            }
-
-                            let contentClean = cleanText(content);
-                            if (contentClean && contentClean.length > 0) {
-                                mergedContent += contentClean + '\n';
-                            }
-
-                            // Store block data for deletion
-                            if (blockId !== firstBlockId) {
-                                deletedBlocksData.push({
-                                    id: blockId,
-                                    dom: block.outerHTML,
-                                    previousID: block.previousElementSibling ? block.previousElementSibling.dataset.nodeId : null
-                                });
+                            // Get text content directly from DOM
+                            let blockContent = block.querySelector('[contenteditable="true"]')?.textContent || '';
+                            if (blockContent) {
+                                allBlocksContent.push(blockContent);
                             }
                         }
 
-                        // Update first block with merged content
-                        await updateBlock('markdown', mergedContent.trim(), firstBlockId);
+                        // Merge content
+                        mergedContent = allBlocksContent.join('\n');
 
-                        // Create new DOM for merged content
-                        let lute = window.Lute.New();
-                        let newBlockDom = lute.Md2BlockDOM(mergedContent.trim());
-                        newBlockDom = newBlockDom.replace(/data-node-id="[^"]*"/, `data-node-id="${firstBlockId}"`);
+                        // Frontend update for first block
+                        const firstBlock = detail.blockElements[0];
+                        const editableDiv = firstBlock.querySelector('[contenteditable="true"]');
+                        if (editableDiv) {
+                            editableDiv.textContent = mergedContent;
+                        }
 
-                        // Update transaction for first block
-                        protyle.getInstance().updateTransaction(firstBlockId, newBlockDom, firstBlockOldDom);
-
+                        // Remove other blocks from DOM
                         let doOperations: IOperation[] = [];
                         let undoOperations: IOperation[] = [];
+
+                        // Store first block update
+                        const newFirstBlockDom = firstBlock.outerHTML;
                         doOperations.push({
                             action: "update",
                             id: firstBlockId,
-                            data: newBlockDom
+                            data: newFirstBlockDom
                         });
                         undoOperations.push({
                             action: "update",
                             id: firstBlockId,
-                            data: firstBlockOldDom,
+                            data: firstBlockOldDom
                         });
 
-                        // Reverse the array to delete blocks from bottom to top
-                        for (const blockData of [...deletedBlocksData].reverse()) {
+                        // Remove other blocks
+                        for (let i = 1; i < detail.blockElements.length; i++) {
+                            const block = detail.blockElements[i];
+                            const blockId = block.dataset.nodeId;
+                            const blockOldDom = block.outerHTML;
 
-                            await deleteBlock(blockData.id);
+                            // Frontend: remove block from DOM
+                            block.remove();
+
+                            // Add delete operation
                             doOperations.push({
                                 action: "delete",
-                                id: blockData.id,
+                                id: blockId,
                                 data: null
                             });
                             undoOperations.push({
                                 action: "insert",
-                                id: blockData.id,
-                                data: blockData.dom,
+                                id: blockId,
+                                data: blockOldDom,
                                 previousID: firstBlockId,
                                 parentID: protyle.block.id
                             });
-
                         }
+
+                        // Execute transaction
                         protyle.getInstance().transaction(doOperations, undoOperations);
 
                     } catch (e) {
