@@ -622,32 +622,38 @@ export default class PluginText extends Plugin {
                                 let previousId = blockId;
                                 for (let i = 1; i < lines.length; i++) {
                                     if (lines[i].trim()) {
-                                        await refreshSql();
-                                        const newBlock = await insertBlock('markdown', lines[i], null, previousId, null);
-                                        if (newBlock) {
-                                            const newId = newBlock[0].doOperations[0].id;
-                                            // 🐛Fix(拆分块): 拆分块的时候transaction的insert和inserBlock API会冲突，暂时先取消撤回机制了
-                                            // let newDom = lute.Md2BlockDOM(lines[i]);
-                                            // newDom = newDom.replace(/data-node-id="[^"]*"/, `data-node-id="${newId}"`);
+                                        // Generate new block DOM
+                                        let newDom = lute.Md2BlockDOM(lines[i]);
+                                        let newId = newDom.match(/data-node-id="([^"]*)"/)[1];
 
-                                            // doOperations.push({
-                                            //     action: "insert",
-                                            //     id: newId,
-                                            //     data: newDom,
-                                            //     previousID: previousId,
-                                            //     parentID: protyle.block.id
-                                            // });
-                                            // undoOperations.push({
-                                            //     action: "delete",
-                                            //     id: newId,
-                                            //     data: null
-                                            // });
-
-                                            previousId = newId;
+                                        // Insert the block directly in DOM
+                                        // 🐛Fix(拆分块): 拆分块的时候transaction的insert和inserBlock API会冲突，想到了新方法，可以直接前端更新内容，后端更新慢，就让它后端慢慢更新吧
+                                        const previousElement = protyle.wysiwyg.element.querySelector(`div[data-node-id="${previousId}"]`);
+                                        if (previousElement) {
+                                            const tempDiv = document.createElement('div');
+                                            tempDiv.innerHTML = newDom;
+                                            previousElement.after(tempDiv.firstChild);
                                         }
+
+                                        // Add to transaction operations
+                                        doOperations.push({
+                                            action: "insert",
+                                            id: newId,
+                                            data: newDom,
+                                            previousID: previousId,
+                                            parentID: protyle.block.id
+                                        });
+                                        undoOperations.push({
+                                            action: "delete",
+                                            id: newId,
+                                            data: null
+                                        });
+
+                                        previousId = newId;
                                     }
                                 }
 
+                                // Execute transaction after all blocks are inserted
                                 protyle.getInstance().transaction(doOperations, undoOperations);
                             }
                         }
