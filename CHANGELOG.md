@@ -1,4 +1,15 @@
 
+## v0.1.5 / 2025.03.09
+- 🐛Fix(拆分块): 拆分块的时候transaction的insert和inserBlock API会冲突，想到了新方法，可以直接前端更新内容，后端更新慢，就让它后端慢慢更新吧
+- 🐛 fix(复制到小红书): 之前需要选中列表块才能正确转化，现在只需要选中列表项，就可以正确转化了
+- ✨ feat(合并块): 加速合并块速度
+
+--- 
+
+- 🐛 Fix(Split Block): When splitting a block, the insert and inserBlock APIs of the transaction will conflict. I thought of a new method, which can directly update the content on the front end. The back end updates slowly, so let it update slowly
+- 🐛 fix(Copy to Xiaohongshu): Previously, you needed to select the list block to convert correctly. Now you only need to select the list item to convert correctly
+- ✨ feat(Merge Block): Speed up the merging block speed
+
 ## v0.1.4 / 2025.03.05
 - 🐛 fix(粘贴)：开启公式自动转化，无法右键粘贴 [#17](https://github.com/Achuan-2/siyuan-plugin-paste-process/issues/17)
 
