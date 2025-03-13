@@ -8,7 +8,8 @@
         "addEmptyLines": "Add Empty Lines",
         "convertList": "Convert Rich Text List",
         "removeSuperscript": "Remove Superscript",
-        "removeLinks": "Remove Links Keep Text"
+        "removeLinks": "Remove Links Keep Text",
+        "preserveColors": "Preserve HTML Colors"
     },
     "blockOperations": {
         "mergeBlocks": "Merge Blocks",

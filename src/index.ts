@@ -47,7 +47,8 @@ export default class PluginText extends Plugin {
             pptList: false,
             removeSuperscript: false,  // Add new option
             removeLinks: false, // Add new option
-            inlineLatex: false  // Add inlineLatex here
+            inlineLatex: false,  // Add inlineLatex here
+            preserveColors: false // 添加保留Word颜色选项
         }
         await this.loadData(STORAGE_NAME);
         console.log(this.data[STORAGE_NAME]);
@@ -178,8 +179,9 @@ export default class PluginText extends Plugin {
             // text = text.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             // html = html.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
-            html = convertOfficeListToHtml(html);
             console.log(html);
+            html = convertOfficeListToHtml(html);
+
 
         }
         if (this.data[STORAGE_NAME].removeSuperscript) {
@@ -190,6 +192,193 @@ export default class PluginText extends Plugin {
             text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1'); // Remove markdown links
             html = html.replace(/<a[^>]*>(.*?)<\/a>/g, '$1'); // Remove HTML links
         }
+
+        // Word颜色处理：如果没启用保留颜色，则移除所有颜色样式
+        if (this.data[STORAGE_NAME].preserveColors) {
+
+            // 如果html包含id="20250313235736-ywdz6cn" （时间+随机字母），updated="20250313235747"（14位数字），则不继续替换下面内容
+            if (!html.match(/id="\d{14}-[a-z0-9]{7}" updated="\d{14}"/)) {
+                // 添加一个功能，<span style="color:xx">xxx</span>的文本替换为<span data-type='text style="color:xx">xxx</span>
+                // First convert color spans to links
+                function color2link(html) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    // 找到所有具有 style 属性的 span 元素
+                    const spans = doc.querySelectorAll('span[style]');
+                    spans.forEach(span => {
+                        const style = span.getAttribute('style');
+                        const colorMatch = style.match(/color\s*:\s*([^;]+)/i);
+                        if (colorMatch) {
+                            let color = colorMatch[1].trim();
+                            color = color.split(';')[0]; // 清理颜色值
+                            if (color) {
+                                // 创建 <a> 元素
+                                const a = doc.createElement('a');
+                                a.href = `color:${color}`;
+                                // 将 span 的所有子节点移动到 a 元素中
+                                while (span.firstChild) {
+                                    a.appendChild(span.firstChild);
+                                }
+                                // 用 a 元素替换 span 元素
+                                span.parentNode.replaceChild(a, span);
+                            }
+                        }
+                    });
+                    // 将修改后的 DOM 树序列化回 HTML 字符串
+                    return doc.body.innerHTML;
+
+                }
+
+
+
+                html = color2link(html);
+
+                // Remove language-specific spans
+                html = html.replace(/<span lang="EN-US"><o:p>\s+<\/o:p><\/span>/g, '');
+                console.log(html);
+                // Convert to BlockDOM using Lute
+                let lute = window.Lute.New();
+                lute.SetSpellcheck(window.siyuan.config.editor.spellcheck);
+                lute.SetProtyleMarkNetImg(window.siyuan.config.editor.displayNetImgMark);
+                lute.SetFileAnnotationRef(true);
+                lute.SetHTMLTag2TextMark(true);
+                lute.SetTextMark(true);
+                lute.SetHeadingID(false);
+                lute.SetYamlFrontMatter(false);
+                lute.SetInlineMathAllowDigitAfterOpenMarker(true);
+                lute.SetToC(false);
+                lute.SetIndentCodeBlock(false);
+                lute.SetParagraphBeginningSpace(true);
+                lute.SetSetext(false);
+                lute.SetFootnotes(false);
+                lute.SetLinkRef(false);
+                lute.SetImgPathAllowSpace(true);
+                lute.SetKramdownIAL(true);
+                lute.SetTag(true);
+                lute.SetSuperBlock(true);
+                lute.SetMark(true);
+
+                let result = lute.HTML2BlockDOM(html);
+                html = null;
+                // console.log(result)
+                // Convert the color links back to styled spans using DOM parser
+                function processColorLinks(html) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+
+                    function handleColorLink(link) {
+                        const href = link.getAttribute('data-href');
+                        const color = href.substring(6); // Remove 'color:' prefix
+
+                        const span = doc.createElement('span');
+                        span.setAttribute('data-type', 'text');
+                        span.setAttribute('style', `color:${color}`);
+
+                        while (link.firstChild) {
+                            span.appendChild(link.firstChild);
+                        }
+
+                        link.parentNode.replaceChild(span, link);
+                        return span;
+                    }
+
+                    function handleNesting(span) {
+                        let currentElement = span;
+                        let parent = currentElement.parentElement;
+                        let formattingTypes = []; // Store formatting types
+
+                        while (parent && (
+                            (parent.tagName === 'STRONG' || parent.tagName === 'EM' ||
+                                parent.tagName === 'B' || parent.tagName === 'I' || parent.tagName === 'U') ||
+                            (parent.tagName === 'SPAN' && parent.getAttribute('data-type') &&
+                                ['strong', 'em', 'u'].includes(parent.getAttribute('data-type')))
+                        )) {
+
+                            let formattingType = '';
+                            if (parent.tagName === 'STRONG' || parent.tagName === 'B' ||
+                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') === 'strong')) {
+                                formattingType = 'strong';
+                            } else if (parent.tagName === 'EM' || parent.tagName === 'I' ||
+                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') === 'em')) {
+                                formattingType = 'em';
+                            } else if (parent.tagName === 'U' ||
+                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') === 'u')) {
+                                formattingType = 'u';
+                            }
+
+                            if (formattingType) {
+                                formattingTypes.push(formattingType); // Add to the array
+                            }
+
+
+                            if (parent.childNodes.length === 1) {
+                                parent.parentNode.replaceChild(currentElement, parent);
+                                parent = currentElement.parentElement;
+                            } else {
+                                const parentChildren = Array.from(parent.childNodes);
+                                const spanIndex = parentChildren.indexOf(currentElement);
+                                const tagName = parent.tagName;
+
+                                if (spanIndex === 0) {
+                                    parent.removeChild(currentElement);
+                                    parent.parentNode.insertBefore(currentElement, parent);
+                                } else if (spanIndex === parentChildren.length - 1) {
+                                    parent.removeChild(currentElement);
+                                    const nextSibling = parent.nextSibling;
+                                    if (nextSibling) {
+                                        parent.parentNode.insertBefore(currentElement, nextSibling);
+                                    } else {
+                                        parent.parentNode.appendChild(currentElement);
+                                    }
+                                } else {
+                                    const newFormattingElem = doc.createElement(tagName);
+                                    for (const attr of parent.attributes) {
+                                        newFormattingElem.setAttribute(attr.name, attr.value);
+                                    }
+
+                                    while (parent.childNodes[spanIndex + 1]) {
+                                        newFormattingElem.appendChild(parent.childNodes[spanIndex + 1]);
+                                    }
+
+                                    parent.removeChild(currentElement);
+
+                                    const nextSibling = parent.nextSibling;
+                                    if (nextSibling) {
+                                        parent.parentNode.insertBefore(newFormattingElem, nextSibling);
+                                        parent.parentNode.insertBefore(currentElement, newFormattingElem);
+                                    } else {
+                                        parent.parentNode.appendChild(currentElement);
+                                        parent.parentNode.appendChild(newFormattingElem);
+                                    }
+                                }
+                                parent = currentElement.parentElement;
+                            }
+                        }
+                        // Combine and set data-type after the loop
+                        let combinedDataType = 'text';
+                        for (const type of formattingTypes.reverse()) { // Apply in reverse order
+                            combinedDataType += ` ${type}`;
+                        }
+                        currentElement.setAttribute('data-type', combinedDataType);
+                    }
+
+                    const colorLinks = doc.querySelectorAll('span[data-type="a"][data-href^="color:"]');
+                    colorLinks.forEach(link => {
+                        const span = handleColorLink(link);
+                        handleNesting(span);
+                    });
+
+                    return doc.body.innerHTML;
+                }
+
+                    console.log(result);
+                result = processColorLinks(result);
+                console.log(result);
+                siyuan = result;
+
+            }
+        }
+
         event.detail.resolve({
             textPlain: text,
             textHTML: html,
@@ -218,6 +407,14 @@ export default class PluginText extends Plugin {
             label: this.i18n.pasteOptions.convertList,
             click: async (detail, event) => {
                 this.toggleOption("pptList", detail);
+            }
+        });
+        // 添加保留Word颜色选项
+        menu.addItem({
+            icon: this.data[STORAGE_NAME].preserveColors ? "iconSelect" : "iconClose",
+            label: this.i18n.pasteOptions.preserveColors,
+            click: (detail, event) => {
+                this.toggleOption("preserveColors", detail);
             }
         });
         menu.addItem({
@@ -262,6 +459,8 @@ export default class PluginText extends Plugin {
                 this.toggleOption("addEmptyLines", detail);
             }
         });
+
+
 
         if (this.isMobile) {
             menu.fullscreen();
@@ -375,7 +574,7 @@ export default class PluginText extends Plugin {
                             function numberToEmoji(num) {
                                 // ⓿ ❶、❷、❸、❹、❺、❻、❼、❽、❾、❿、⓫、⓬、⓭、⓮、⓯、⓰、⓱、⓲、⓳、⓴
                                 const emojiDigits = ['⓿', '➊', '➋', '➌', '➍', '➎', '➏', '➐', '➑', '➒', '➓', '⓫', '⓬', '⓭', '⓮', '⓯', '⓰', '⓱', '⓲', '⓳', '⓴'];
-                                
+
                                 if (num <= 20) {
                                     return emojiDigits[num];
                                 } else {
