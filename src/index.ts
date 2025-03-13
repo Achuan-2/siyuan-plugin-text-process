@@ -247,7 +247,6 @@ export default class PluginText extends Plugin {
                 let lute = window.Lute.New();
                 lute.SetSpellcheck(window.siyuan.config.editor.spellcheck);
                 lute.SetProtyleMarkNetImg(window.siyuan.config.editor.displayNetImgMark);
-                lute.SetFileAnnotationRef(true);
                 lute.SetHTMLTag2TextMark(true);
                 lute.SetTextMark(true);
                 lute.SetHeadingID(false);
@@ -275,18 +274,94 @@ export default class PluginText extends Plugin {
 
                     function handleColorLink(link) {
                         const href = link.getAttribute('data-href');
-                        const color = href; // Remove 'color:' prefix
+                        const color = href; // The color style
+                        const style = link.getAttribute('style') || '';
 
+                        // Create the new span with color styling
                         const span = doc.createElement('span');
                         span.setAttribute('data-type', 'text');
-                        span.setAttribute('style', `${color}`);
+                        span.setAttribute('style', `${style} ${color}`);
 
+                        // Move all children to the new span
                         while (link.firstChild) {
                             span.appendChild(link.firstChild);
                         }
 
                         link.parentNode.replaceChild(span, link);
+
+                        // Process inner formatting elements
+                        processInnerFormatting(span);
+
                         return span;
+                    }
+
+                    function processInnerFormatting(parentSpan) {
+                        const style = parentSpan.getAttribute('style') || '';
+                        const dataType = parentSpan.getAttribute('data-type') || 'text';
+
+                        // Find all formatting elements inside the span
+                        const formatElements = parentSpan.querySelectorAll('strong, b, em, i, u, span[data-type="strong"], span[data-type="em"], span[data-type="u"]');
+
+                        if (formatElements.length === 0) {
+                            return; // No formatting elements inside
+                        }
+
+                        // Create a document fragment to hold the new structure
+                        const fragment = doc.createDocumentFragment();
+                        let currentTextNode = null;
+                        let currentPosition = 0;
+
+                        // Process each child node in order
+                        Array.from(parentSpan.childNodes).forEach(node => {
+                            // If it's a text node, create a span for it
+                            if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
+                                const textSpan = doc.createElement('span');
+                                textSpan.setAttribute('data-type', dataType);
+                                textSpan.setAttribute('style', style);
+                                textSpan.textContent = node.textContent;
+                                fragment.appendChild(textSpan);
+                            }
+                            // If it's a formatting element
+                            else if (node.nodeType === Node.ELEMENT_NODE) {
+                                const tag = node.tagName.toLowerCase();
+                                let formattingType = '';
+
+                                if (tag === 'strong' || tag === 'b' ||
+                                    (tag === 'span' && node.getAttribute('data-type') === 'strong')) {
+                                    formattingType = 'strong';
+                                } else if (tag === 'em' || tag === 'i' ||
+                                    (tag === 'span' && node.getAttribute('data-type') === 'em')) {
+                                    formattingType = 'em';
+                                } else if (tag === 'u' ||
+                                    (tag === 'span' && node.getAttribute('data-type') === 'u')) {
+                                    formattingType = 'u';
+                                }
+
+                                if (formattingType) {
+                                    // Create a new span with both styling and formatting
+                                    const formattedSpan = doc.createElement('span');
+                                    formattedSpan.setAttribute('data-type', `${formattingType} ${dataType.replace('text', '').trim()}`);
+                                    formattedSpan.setAttribute('style', style);
+                                    formattedSpan.textContent = node.textContent;
+                                    fragment.appendChild(formattedSpan);
+                                } else {
+                                    // Other elements, clone and append
+                                    const clone = node.cloneNode(true);
+                                    if (style && !clone.getAttribute('style')) {
+                                        clone.setAttribute('style', style);
+                                    }
+                                    fragment.appendChild(clone);
+                                }
+                            }
+                        });
+
+                        // Clear the original span and insert the new structure
+                        while (parentSpan.firstChild) {
+                            parentSpan.removeChild(parentSpan.firstChild);
+                        }
+
+                        parentSpan.parentNode.insertBefore(fragment, parentSpan);
+                        parentSpan.parentNode.removeChild(parentSpan);
                     }
 
                     function handleNesting(span) {
@@ -316,7 +391,6 @@ export default class PluginText extends Plugin {
                             if (formattingType) {
                                 formattingTypes.push(formattingType); // Add to the array
                             }
-
 
                             if (parent.childNodes.length === 1) {
                                 parent.parentNode.replaceChild(currentElement, parent);
@@ -361,6 +435,7 @@ export default class PluginText extends Plugin {
                                 parent = currentElement.parentElement;
                             }
                         }
+
                         // Combine and set data-type after the loop
                         let combinedDataType = 'text';
                         for (const type of formattingTypes.reverse()) { // Apply in reverse order
@@ -369,14 +444,23 @@ export default class PluginText extends Plugin {
                         currentElement.setAttribute('data-type', combinedDataType);
                     }
 
+                    // Process color links - both for spans that are color links themselves
                     const colorLinks = doc.querySelectorAll('span[data-type="a"][data-href^="color:"], span[data-type="a"][data-href^="background-color:"]');
                     colorLinks.forEach(link => {
                         const span = handleColorLink(link);
                         handleNesting(span);
                     });
 
+                    // Also process spans with style that have formatting elements inside them
+                    const styledSpans = doc.querySelectorAll('span[style*="color:"], span[style*="background-color:"]');
+                    styledSpans.forEach(span => {
+                        processInnerFormatting(span);
+                    });
+
                     return doc.body.innerHTML;
                 }
+
+
 
                     console.log(result);
                 result = processColorLinks(result);
