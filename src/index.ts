@@ -208,26 +208,33 @@ export default class PluginText extends Plugin {
                     spans.forEach(span => {
                         const style = span.getAttribute('style');
                         const colorMatch = style.match(/color\s*:\s*([^;]+)/i);
-                        if (colorMatch) {
-                            let color = colorMatch[1].trim();
-                            color = color.split(';')[0]; // 清理颜色值
-                            if (color) {
-                                // 创建 <a> 元素
-                                const a = doc.createElement('a');
-                                a.href = `color:${color}`;
-                                // 将 span 的所有子节点移动到 a 元素中
-                                while (span.firstChild) {
-                                    a.appendChild(span.firstChild);
-                                }
-                                // 用 a 元素替换 span 元素
-                                span.parentNode.replaceChild(a, span);
+                        const bgColorMatch = style.match(/background-color\s*:\s*([^;]+)/i) || style.match(/background\s*:\s*([^;]+)/i);
+                        if (colorMatch || bgColorMatch) {
+                            // 创建 <a> 元素
+                            const a = doc.createElement('a');
+                            if (colorMatch) {
+                                let color = colorMatch[1].trim();
+                                color = color.split(';')[0]; // 清理颜色值
+                                a.href += `color:${color};`;
                             }
+                            if (bgColorMatch) {
+                                let bgColor = bgColorMatch[1].trim();
+                                bgColor = bgColor.split(';')[0]; // 清理颜色值
+                                // 使用 data-bg-color 属性存储背景颜色
+                                a.href += "background-color:" + bgColor+";";
+                            }
+                            // 将 span 的所有子节点移动到 a 元素中
+                            while (span.firstChild) {
+                                a.appendChild(span.firstChild);
+                            }
+                            // 用 a 元素替换 span 元素
+                            span.parentNode.replaceChild(a, span);
                         }
                     });
                     // 将修改后的 DOM 树序列化回 HTML 字符串
                     return doc.body.innerHTML;
-
                 }
+
 
 
 
@@ -268,11 +275,11 @@ export default class PluginText extends Plugin {
 
                     function handleColorLink(link) {
                         const href = link.getAttribute('data-href');
-                        const color = href.substring(6); // Remove 'color:' prefix
+                        const color = href; // Remove 'color:' prefix
 
                         const span = doc.createElement('span');
                         span.setAttribute('data-type', 'text');
-                        span.setAttribute('style', `color:${color}`);
+                        span.setAttribute('style', `${color}`);
 
                         while (link.firstChild) {
                             span.appendChild(link.firstChild);
@@ -362,7 +369,7 @@ export default class PluginText extends Plugin {
                         currentElement.setAttribute('data-type', combinedDataType);
                     }
 
-                    const colorLinks = doc.querySelectorAll('span[data-type="a"][data-href^="color:"]');
+                    const colorLinks = doc.querySelectorAll('span[data-type="a"][data-href^="color:"], span[data-type="a"][data-href^="background-color:"]');
                     colorLinks.forEach(link => {
                         const span = handleColorLink(link);
                         handleNesting(span);
