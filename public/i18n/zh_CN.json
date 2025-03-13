@@ -61,8 +61,8 @@
             "description": "输入多个符号，会根据标题层级来使用不同符号</br> 标题符号举例：</br> emoji：❤️⭐️💡</br> 第一个符号用于h1标题，第二个符号用于h2标题，以此类推"
         },
         "inlineLatex": {
-            "title": "公式自动转换是否转为行级公式",
-            "description": "开启后，所有的公式（包括LaTeX和Markdown）都会转换为行级数学公式"
+            "title": "公式自动转换是否都转为行内公式",
+            "description": "开启后，所有的公式（包括LaTeX和Markdown）都会转换为行内数学公式"
         }
     }
 }
