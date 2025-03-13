@@ -143,7 +143,7 @@ export default class PluginText extends Plugin {
                 text = text.replace(/\$\$(.*?)\$\$/gs, (_, p1) => `$${p1.replace(/\n/g, '')}$`); // Markdown block to inline
 
             } else {
-                text = text.replace(/\\\[(.*?)\\\]/gs, '$$$$$1$$$$'); // LaTeX block math
+                text = text.replace(/\\\[(.*?)\\\]/gs, '\n$$$$$1$$$$\n'); // LaTeX block math
                 text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
             }
         }
