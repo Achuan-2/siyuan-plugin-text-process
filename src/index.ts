@@ -244,25 +244,34 @@ export default class PluginText extends Plugin {
                 html = html.replace(/<span lang="EN-US"><o:p>\s+<\/o:p><\/span>/g, '');
                 console.log(html);
                 // Convert to BlockDOM using Lute
+                // Convert to BlockDOM using Lute
                 let lute = window.Lute.New();
                 lute.SetSpellcheck(window.siyuan.config.editor.spellcheck);
-                lute.SetProtyleMarkNetImg(window.siyuan.config.editor.displayNetImgMark);
-                lute.SetHTMLTag2TextMark(true);
-                lute.SetTextMark(true);
+                lute.SetProtyleMarkNetImg(false);
+                lute.SetHTMLTag2TextMark(true); // HTMLTag2TextMark 设置是否打开 HTML 某些标签解析为 TextMark 节点支持。
+                lute.SetTextMark(true);// TextMark 设置是否打开通用行级节点解析支持。
                 lute.SetHeadingID(false);
                 lute.SetYamlFrontMatter(false);
                 lute.SetInlineMathAllowDigitAfterOpenMarker(true);
-                lute.SetToC(false);
+                lute.SetToC(false); // 设置是否打开“目录”支持。
                 lute.SetIndentCodeBlock(false);
                 lute.SetParagraphBeginningSpace(true);
                 lute.SetSetext(false);
                 lute.SetFootnotes(false);
                 lute.SetLinkRef(false);
                 lute.SetImgPathAllowSpace(true);
-                lute.SetKramdownIAL(true);
+                lute.SetKramdownIAL(false);
                 lute.SetTag(true);
                 lute.SetSuperBlock(true);
                 lute.SetMark(true);
+                lute.SetSub(true);
+                lute.SetSup(true);
+                lute.SetProtyleWYSIWYG(true); // 这个开了可以防止错误解析，比如斜体有时候会识别为markdown文本
+                // lute.SetKramdownSpanIAL(true); // KramdownSpanIAL 设置是否打开 kramdown 行级内联属性列表支持。
+                lute.SetInlineUnderscore(true);
+                lute.SetGFMStrikethrough(true);
+                lute.SetGFMStrikethrough1(true);
+                lute.SetSpin(true);
 
                 let result = lute.HTML2BlockDOM(html);
                 html = null;
@@ -277,9 +286,16 @@ export default class PluginText extends Plugin {
                         const color = href; // The color style
                         const style = link.getAttribute('style') || '';
 
+                        // Handle data-type attribute - improve error handling for null/undefined
+                        const dataType = link.getAttribute('data-type') || '';
+
+                        // Split and filter out 'a' tag type while preserving other types
+                        const dataTypeArray = dataType ? dataType.split(' ').filter(type => type !== 'a') : [];
+
                         // Create the new span with color styling
                         const span = doc.createElement('span');
-                        span.setAttribute('data-type', 'text');
+                        // Preserve all formatting types (text, em, strong, u) from the original element
+                        span.setAttribute('data-type', 'text' + (dataTypeArray.length > 0 ? ' ' + dataTypeArray.join(' ') : ''));
                         span.setAttribute('style', `${style} ${color}`);
 
                         // Move all children to the new span
@@ -308,8 +324,6 @@ export default class PluginText extends Plugin {
 
                         // Create a document fragment to hold the new structure
                         const fragment = doc.createDocumentFragment();
-                        let currentTextNode = null;
-                        let currentPosition = 0;
 
                         // Process each child node in order
                         Array.from(parentSpan.childNodes).forEach(node => {
@@ -327,20 +341,28 @@ export default class PluginText extends Plugin {
                                 let formattingType = '';
 
                                 if (tag === 'strong' || tag === 'b' ||
-                                    (tag === 'span' && node.getAttribute('data-type') === 'strong')) {
+                                    (tag === 'span' && node.getAttribute('data-type') && node.getAttribute('data-type').includes('strong'))) {
                                     formattingType = 'strong';
                                 } else if (tag === 'em' || tag === 'i' ||
-                                    (tag === 'span' && node.getAttribute('data-type') === 'em')) {
+                                    (tag === 'span' && node.getAttribute('data-type') && node.getAttribute('data-type').includes('em'))) {
                                     formattingType = 'em';
                                 } else if (tag === 'u' ||
-                                    (tag === 'span' && node.getAttribute('data-type') === 'u')) {
+                                    (tag === 'span' && node.getAttribute('data-type') && node.getAttribute('data-type').includes('u'))) {
                                     formattingType = 'u';
                                 }
 
                                 if (formattingType) {
                                     // Create a new span with both styling and formatting
                                     const formattedSpan = doc.createElement('span');
-                                    formattedSpan.setAttribute('data-type', `${formattingType} ${dataType.replace('text', '').trim()}`);
+                                    // Extract existing types excluding 'text' which will be re-added
+                                    const existingTypes = dataType.split(' ').filter(type => type !== 'text');
+
+                                    // Ensure formattingType is included and not duplicated
+                                    if (!existingTypes.includes(formattingType)) {
+                                        existingTypes.push(formattingType);
+                                    }
+
+                                    formattedSpan.setAttribute('data-type', `text ${existingTypes.join(' ')}`);
                                     formattedSpan.setAttribute('style', style);
                                     formattedSpan.textContent = node.textContent;
                                     fragment.appendChild(formattedSpan);
@@ -373,18 +395,28 @@ export default class PluginText extends Plugin {
                             (parent.tagName === 'STRONG' || parent.tagName === 'EM' ||
                                 parent.tagName === 'B' || parent.tagName === 'I' || parent.tagName === 'U') ||
                             (parent.tagName === 'SPAN' && parent.getAttribute('data-type') &&
-                                ['strong', 'em', 'u'].includes(parent.getAttribute('data-type')))
+                                (parent.getAttribute('data-type').includes('strong') ||
+                                    parent.getAttribute('data-type').includes('em') ||
+                                    parent.getAttribute('data-type').includes('u')))
                         )) {
-
                             let formattingType = '';
+
+                            // Check for strong formatting
                             if (parent.tagName === 'STRONG' || parent.tagName === 'B' ||
-                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') === 'strong')) {
+                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') &&
+                                    parent.getAttribute('data-type').includes('strong'))) {
                                 formattingType = 'strong';
-                            } else if (parent.tagName === 'EM' || parent.tagName === 'I' ||
-                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') === 'em')) {
+                            }
+                            // Check for emphasis formatting
+                            else if (parent.tagName === 'EM' || parent.tagName === 'I' ||
+                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') &&
+                                    parent.getAttribute('data-type').includes('em'))) {
                                 formattingType = 'em';
-                            } else if (parent.tagName === 'U' ||
-                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') === 'u')) {
+                            }
+                            // Check for underline formatting
+                            else if (parent.tagName === 'U' ||
+                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') &&
+                                    parent.getAttribute('data-type').includes('u'))) {
                                 formattingType = 'u';
                             }
 
@@ -436,17 +468,52 @@ export default class PluginText extends Plugin {
                             }
                         }
 
-                        // Combine and set data-type after the loop
-                        let combinedDataType = 'text';
-                        for (const type of formattingTypes.reverse()) { // Apply in reverse order
-                            combinedDataType += ` ${type}`;
+                        // Get current data-type from the element
+                        const currentDataType = currentElement.getAttribute('data-type') || '';
+                        const currentTypes = currentDataType.split(' ');
+
+                        // Prepare new data-type, starting with 'text' if needed
+                        let types = currentTypes.includes('text') ? currentTypes : ['text', ...currentTypes];
+
+                        // Add all formatting types not already in the list
+                        for (const type of formattingTypes) {
+                            if (!types.includes(type)) {
+                                types.push(type);
+                            }
                         }
-                        currentElement.setAttribute('data-type', combinedDataType);
+
+                        // Filter out any 'a' type and ensure no duplicates
+                        types = Array.from(new Set(types.filter(type => type !== 'a' && type !== '')));
+
+                        // Set the combined data-type attribute
+                        currentElement.setAttribute('data-type', types.join(' '));
                     }
 
+                    // Process spans with data-type="u a" and other formatting styles
+                    const formattedLinks = doc.querySelectorAll('span[data-type*="a"]');
+                    formattedLinks.forEach(link => {
+                        const dataType = link.getAttribute('data-type') || '';
+                        // Check if the data-type contains "a" as a word
+                        if (dataType === 'a' || dataType.split(' ').includes('a')) {
+                            const span = handleColorLink(link);
+                            handleNesting(span);
+                        }
+                    });
+
                     // Process color links - both for spans that are color links themselves
-                    const colorLinks = doc.querySelectorAll('span[data-type="a"][data-href^="color:"], span[data-type="a"][data-href^="background-color:"]');
+                    const colorLinks = doc.querySelectorAll('span[data-href^="color:"], span[data-href^="background-color:"]');
                     colorLinks.forEach(link => {
+                        const dataType = link.getAttribute('data-type') || '';
+                        // Check if the data-type contains "a" as a word
+                        if (dataType === 'a' || dataType.split(' ').includes('a')) {
+                            const span = handleColorLink(link);
+                            handleNesting(span);
+                        }
+                    });
+
+                    // Also process a elements with data-href for color
+                    const aColorLinks = doc.querySelectorAll('a[data-href^="color:"], a[data-href^="background-color:"]');
+                    aColorLinks.forEach(link => {
                         const span = handleColorLink(link);
                         handleNesting(span);
                     });
@@ -459,6 +526,9 @@ export default class PluginText extends Plugin {
 
                     return doc.body.innerHTML;
                 }
+
+
+
 
 
 
