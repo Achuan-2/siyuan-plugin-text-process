@@ -247,7 +247,7 @@ export default class PluginText extends Plugin {
                 // Convert to BlockDOM using Lute
                 let lute = window.Lute.New();
                 lute.SetSpellcheck(window.siyuan.config.editor.spellcheck);
-                lute.SetProtyleMarkNetImg(false);
+                lute.SetProtyleMarkNetImg(true);
                 lute.SetHTMLTag2TextMark(true); // HTMLTag2TextMark 设置是否打开 HTML 某些标签解析为 TextMark 节点支持。
                 lute.SetTextMark(true);// TextMark 设置是否打开通用行级节点解析支持。
                 lute.SetHeadingID(false);
@@ -256,19 +256,19 @@ export default class PluginText extends Plugin {
                 lute.SetToC(false); // 设置是否打开“目录”支持。
                 lute.SetIndentCodeBlock(false);
                 lute.SetParagraphBeginningSpace(true);
-                lute.SetSetext(false);
+                lute.SetSetext(true);
                 lute.SetFootnotes(false);
-                lute.SetLinkRef(false);
+                lute.SetLinkRef(true);
                 lute.SetImgPathAllowSpace(true);
-                lute.SetKramdownIAL(false);
+                lute.SetKramdownIAL(true);
                 lute.SetTag(true);
                 lute.SetSuperBlock(true);
                 lute.SetMark(true);
                 lute.SetSub(true);
                 lute.SetSup(true);
-                lute.SetProtyleWYSIWYG(true); // 这个开了可以防止错误解析，比如斜体有时候会识别为markdown文本
-                // lute.SetKramdownSpanIAL(true); // KramdownSpanIAL 设置是否打开 kramdown 行级内联属性列表支持。
-                lute.SetInlineUnderscore(true);
+                lute.SetProtyleWYSIWYG(true); // 这个开了可以防止错误解析，比如斜体有时候会识别为markdown文本，但是开启之后u会丢失a链接，遇到[，a链接会变为markdown格式
+                lute.SetKramdownSpanIAL(true); // KramdownSpanIAL 设置是否打开 kramdown 行级内联属性列表支持。
+                // lute.SetInlineUnderscore(true);
                 lute.SetGFMStrikethrough(true);
                 lute.SetGFMStrikethrough1(true);
                 lute.SetSpin(true);
