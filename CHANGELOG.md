@@ -1,3 +1,7 @@
+
+## v0.1.8 / 2025.03.15
+- ✨ feat(文本粘贴): 支持富文本粘贴时，保留颜色和背景色
+
 ## v0.1.7 / 2025.03.13
 
 - ✨  feat(数学公式转换): 完善 LaTeX 块数学公式在段落内的解析问题 [#18](https://github.com/Achuan-2/siyuan-plugin-text-process/issues/18)

@@ -2,7 +2,7 @@
   "name": "siyuan-plugin-text-process",
   "author": "Achuan-2",
   "url": "https://github.com/Achuan-2/siyuan-plugin-text-process",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "minAppVersion": "3.0.12",
   "backends": [
     "windows",
