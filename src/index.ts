@@ -242,7 +242,7 @@ export default class PluginText extends Plugin {
 
                 // Remove language-specific spans
                 html = html.replace(/<span lang="EN-US"><o:p>\s+<\/o:p><\/span>/g, '');
-                console.log(html);
+                // console.log(html);
                 // Convert to BlockDOM using Lute
                 // Convert to BlockDOM using Lute
                 let lute = window.Lute.New();
@@ -395,9 +395,9 @@ export default class PluginText extends Plugin {
                     return doc.body.innerHTML;
                 }
 
-                console.log(result);
+                // console.log(result);
                 result = processColorLinks(result);
-                console.log(result);
+                // console.log(result);
                 siyuan = result;
                 html = null;
 
