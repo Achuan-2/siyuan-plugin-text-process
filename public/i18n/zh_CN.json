@@ -9,7 +9,7 @@
         "convertList": "Office列表粘贴适配",
         "removeSuperscript": "去除上标",
         "removeLinks": "链接转文字",
-        "preserveColors": "保留HTML颜色"
+        "preserveColors": "保留富文本颜色"
     },
     "blockOperations": {
         "mergeBlocks": "合并块",

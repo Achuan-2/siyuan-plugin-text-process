@@ -274,268 +274,132 @@ export default class PluginText extends Plugin {
                 lute.SetSpin(true);
 
                 let result = lute.HTML2BlockDOM(html);
-                html = null;
+                // 处理意外产生的`[[](bacground-color:xx)`和`[[](color:xx)`，改为<span data-type="a" href="xxx">[<span>标签
+                
+                result = result.replace(/\[(.*?)\]\(((?:background-color|color):.*?)\)/g,
+                    '<span data-type="a" data-href="$2">$1<span>');
+                
                 // console.log(result)
                 // Convert the color links back to styled spans using DOM parser
+
                 function processColorLinks(html) {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
 
-                    function handleColorLink(link) {
-                        const href = link.getAttribute('data-href');
-                        const color = href; // The color style
-                        const style = link.getAttribute('style') || '';
 
-                        // Handle data-type attribute - improve error handling for null/undefined
-                        const dataType = link.getAttribute('data-type') || '';
-
-                        // Split and filter out 'a' tag type while preserving other types
-                        const dataTypeArray = dataType ? dataType.split(' ').filter(type => type !== 'a') : [];
-
-                        // Create the new span with color styling
-                        const span = doc.createElement('span');
-                        // Preserve all formatting types (text, em, strong, u) from the original element
-                        span.setAttribute('data-type', 'text' + (dataTypeArray.length > 0 ? ' ' + dataTypeArray.join(' ') : ''));
-                        span.setAttribute('style', `${style} ${color}`);
-
-                        // Move all children to the new span
-                        while (link.firstChild) {
-                            span.appendChild(link.firstChild);
+                    // 创建带有指定样式和类型的 span 元素
+                    function createSpan(text, types, style) {
+                        const span = document.createElement('span');
+                        const uniqueTypes = Array.from(new Set(types)); // 再次确保去重
+                        if (uniqueTypes.length > 0) {
+                            span.setAttribute('data-type', uniqueTypes.join(' '));
                         }
-
-                        link.parentNode.replaceChild(span, link);
-
-                        // Process inner formatting elements
-                        processInnerFormatting(span);
-
+                        if (style) {
+                            span.setAttribute('style', style);
+                        }
+                        span.textContent = text;
                         return span;
                     }
 
-                    function processInnerFormatting(parentSpan) {
-                        const style = parentSpan.getAttribute('style') || '';
-                        const dataType = parentSpan.getAttribute('data-type') || 'text';
+                    // 平铺嵌套结构并合并样式
+                    function flattenFormatting(element, inheritedTypes = [], inheritedStyle = '') {
+                        const fragment = document.createDocumentFragment();
+                        const elementTypes = (element.getAttribute('data-type') || '').split(' ').filter(Boolean);
+                        const currentTypes = Array.from(new Set([...inheritedTypes, ...elementTypes])); // 去重
+                        const currentStyle = element.getAttribute('style') || inheritedStyle;
 
-                        // Find all formatting elements inside the span
-                        const formatElements = parentSpan.querySelectorAll('strong, b, em, i, u, span[data-type="strong"], span[data-type="em"], span[data-type="u"]');
-
-                        if (formatElements.length === 0) {
-                            return; // No formatting elements inside
-                        }
-
-                        // Create a document fragment to hold the new structure
-                        const fragment = doc.createDocumentFragment();
-
-                        // Process each child node in order
-                        Array.from(parentSpan.childNodes).forEach(node => {
-                            // If it's a text node, create a span for it
+                        Array.from(element.childNodes).forEach(node => {
                             if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
-                                const textSpan = doc.createElement('span');
-                                textSpan.setAttribute('data-type', dataType);
-                                textSpan.setAttribute('style', style);
-                                textSpan.textContent = node.textContent;
-                                fragment.appendChild(textSpan);
-                            }
-                            // If it's a formatting element
-                            else if (node.nodeType === Node.ELEMENT_NODE) {
+                                const span = createSpan(node.textContent, currentTypes, currentStyle);
+                                fragment.appendChild(span);
+                            } else if (node.nodeType === Node.ELEMENT_NODE) {
                                 const tag = node.tagName.toLowerCase();
-                                let formattingType = '';
-
-                                if (tag === 'strong' || tag === 'b' ||
-                                    (tag === 'span' && node.getAttribute('data-type') && node.getAttribute('data-type').includes('strong'))) {
-                                    formattingType = 'strong';
-                                } else if (tag === 'em' || tag === 'i' ||
-                                    (tag === 'span' && node.getAttribute('data-type') && node.getAttribute('data-type').includes('em'))) {
-                                    formattingType = 'em';
-                                } else if (tag === 'u' ||
-                                    (tag === 'span' && node.getAttribute('data-type') && node.getAttribute('data-type').includes('u'))) {
-                                    formattingType = 'u';
-                                }
-
-                                if (formattingType) {
-                                    // Create a new span with both styling and formatting
-                                    const formattedSpan = doc.createElement('span');
-                                    // Extract existing types excluding 'text' which will be re-added
-                                    const existingTypes = dataType.split(' ').filter(type => type !== 'text');
-
-                                    // Ensure formattingType is included and not duplicated
-                                    if (!existingTypes.includes(formattingType)) {
-                                        existingTypes.push(formattingType);
-                                    }
-
-                                    formattedSpan.setAttribute('data-type', `text ${existingTypes.join(' ')}`);
-                                    formattedSpan.setAttribute('style', style);
-                                    formattedSpan.textContent = node.textContent;
-                                    fragment.appendChild(formattedSpan);
+                                if (['span', 'strong', 'em', 'u', 'b', 'i', 'sup', 'sub', 'mark','s'].includes(tag)) {
+                                    const nestedFragment = flattenFormatting(node, currentTypes, currentStyle);
+                                    fragment.appendChild(nestedFragment);
                                 } else {
-                                    // Other elements, clone and append
-                                    const clone = node.cloneNode(true);
-                                    if (style && !clone.getAttribute('style')) {
-                                        clone.setAttribute('style', style);
-                                    }
-                                    fragment.appendChild(clone);
+                                    fragment.appendChild(node.cloneNode(true));
                                 }
                             }
                         });
 
-                        // Clear the original span and insert the new structure
-                        while (parentSpan.firstChild) {
-                            parentSpan.removeChild(parentSpan.firstChild);
-                        }
-
-                        parentSpan.parentNode.insertBefore(fragment, parentSpan);
-                        parentSpan.parentNode.removeChild(parentSpan);
+                        return fragment;
                     }
 
-                    function handleNesting(span) {
-                        let currentElement = span;
-                        let parent = currentElement.parentElement;
-                        let formattingTypes = []; // Store formatting types
+                    // 处理 color link
+                    function handleColorLink(link) {
+                        const href = link.getAttribute('data-href'); // 提取颜色值
+                        const colorStyle = href; // 例如 "color:red;"
+                        const style = link.getAttribute('style') || '';
+                        const combinedStyle = `${style} ${colorStyle}`.trim();
 
-                        while (parent && (
-                            (parent.tagName === 'STRONG' || parent.tagName === 'EM' ||
-                                parent.tagName === 'B' || parent.tagName === 'I' || parent.tagName === 'U') ||
-                            (parent.tagName === 'SPAN' && parent.getAttribute('data-type') &&
-                                (parent.getAttribute('data-type').includes('strong') ||
-                                    parent.getAttribute('data-type').includes('em') ||
-                                    parent.getAttribute('data-type').includes('u')))
-                        )) {
-                            let formattingType = '';
+                        // 获取原始 data-type，去掉 'a'
+                        const originalDataType = link.getAttribute('data-type') || '';
+                        const dataTypes = originalDataType.split(' ').filter(type => type !== 'a' && type !== '');
 
-                            // Check for strong formatting
-                            if (parent.tagName === 'STRONG' || parent.tagName === 'B' ||
-                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') &&
-                                    parent.getAttribute('data-type').includes('strong'))) {
-                                formattingType = 'strong';
-                            }
-                            // Check for emphasis formatting
-                            else if (parent.tagName === 'EM' || parent.tagName === 'I' ||
-                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') &&
-                                    parent.getAttribute('data-type').includes('em'))) {
-                                formattingType = 'em';
-                            }
-                            // Check for underline formatting
-                            else if (parent.tagName === 'U' ||
-                                (parent.tagName === 'SPAN' && parent.getAttribute('data-type') &&
-                                    parent.getAttribute('data-type').includes('u'))) {
-                                formattingType = 'u';
-                            }
+                        // 创建新 span，保留非 'a' 的 data-type
+                        const span = document.createElement('span');
+                        if (dataTypes.length > 0) {
+                            span.setAttribute('data-type', dataTypes.join(' '));
+                        }
+                        span.setAttribute('style', combinedStyle);
 
-                            if (formattingType) {
-                                formattingTypes.push(formattingType); // Add to the array
-                            }
-
-                            if (parent.childNodes.length === 1) {
-                                parent.parentNode.replaceChild(currentElement, parent);
-                                parent = currentElement.parentElement;
-                            } else {
-                                const parentChildren = Array.from(parent.childNodes);
-                                const spanIndex = parentChildren.indexOf(currentElement);
-                                const tagName = parent.tagName;
-
-                                if (spanIndex === 0) {
-                                    parent.removeChild(currentElement);
-                                    parent.parentNode.insertBefore(currentElement, parent);
-                                } else if (spanIndex === parentChildren.length - 1) {
-                                    parent.removeChild(currentElement);
-                                    const nextSibling = parent.nextSibling;
-                                    if (nextSibling) {
-                                        parent.parentNode.insertBefore(currentElement, nextSibling);
-                                    } else {
-                                        parent.parentNode.appendChild(currentElement);
-                                    }
-                                } else {
-                                    const newFormattingElem = doc.createElement(tagName);
-                                    for (const attr of parent.attributes) {
-                                        newFormattingElem.setAttribute(attr.name, attr.value);
-                                    }
-
-                                    while (parent.childNodes[spanIndex + 1]) {
-                                        newFormattingElem.appendChild(parent.childNodes[spanIndex + 1]);
-                                    }
-
-                                    parent.removeChild(currentElement);
-
-                                    const nextSibling = parent.nextSibling;
-                                    if (nextSibling) {
-                                        parent.parentNode.insertBefore(newFormattingElem, nextSibling);
-                                        parent.parentNode.insertBefore(currentElement, newFormattingElem);
-                                    } else {
-                                        parent.parentNode.appendChild(currentElement);
-                                        parent.parentNode.appendChild(newFormattingElem);
-                                    }
-                                }
-                                parent = currentElement.parentElement;
-                            }
+                        // 移动子节点到新 span
+                        while (link.firstChild) {
+                            span.appendChild(link.firstChild);
                         }
 
-                        // Get current data-type from the element
-                        const currentDataType = currentElement.getAttribute('data-type') || '';
-                        const currentTypes = currentDataType.split(' ');
+                        // 替换原始 link
+                        link.parentNode.replaceChild(span, link);
 
-                        // Prepare new data-type, starting with 'text' if needed
-                        let types = currentTypes.includes('text') ? currentTypes : ['text', ...currentTypes];
-
-                        // Add all formatting types not already in the list
-                        for (const type of formattingTypes) {
-                            if (!types.includes(type)) {
-                                types.push(type);
-                            }
-                        }
-
-                        // Filter out any 'a' type and ensure no duplicates
-                        types = Array.from(new Set(types.filter(type => type !== 'a' && type !== '')));
-
-                        // Set the combined data-type attribute
-                        currentElement.setAttribute('data-type', types.join(' '));
+                        // 平铺嵌套样式
+                        const fragment = flattenFormatting(span);
+                        span.parentNode.insertBefore(fragment, span);
+                        span.parentNode.removeChild(span);
                     }
 
-                    // Process spans with data-type="u a" and other formatting styles
+                    // 处理所有带有 data-type="a" 的 span
                     const formattedLinks = doc.querySelectorAll('span[data-type*="a"]');
                     formattedLinks.forEach(link => {
                         const dataType = link.getAttribute('data-type') || '';
-                        // Check if the data-type contains "a" as a word
-                        if (dataType === 'a' || dataType.split(' ').includes('a')) {
-                            const span = handleColorLink(link);
-                            handleNesting(span);
+                        if (dataType.split(' ').includes('a')) {
+                            handleColorLink(link);
                         }
                     });
 
-                    // Process color links - both for spans that are color links themselves
+                    // 处理带有 color: 或 background-color: 的 span
                     const colorLinks = doc.querySelectorAll('span[data-href^="color:"], span[data-href^="background-color:"]');
                     colorLinks.forEach(link => {
                         const dataType = link.getAttribute('data-type') || '';
-                        // Check if the data-type contains "a" as a word
-                        if (dataType === 'a' || dataType.split(' ').includes('a')) {
-                            const span = handleColorLink(link);
-                            handleNesting(span);
+                        if (dataType.split(' ').includes('a')) {
+                            handleColorLink(link);
                         }
                     });
 
-                    // Also process a elements with data-href for color
+                    // 处理带有 color: 或 background-color: 的 a 元素
                     const aColorLinks = doc.querySelectorAll('a[data-href^="color:"], a[data-href^="background-color:"]');
                     aColorLinks.forEach(link => {
-                        const span = handleColorLink(link);
-                        handleNesting(span);
+                        handleColorLink(link);
                     });
 
-                    // Also process spans with style that have formatting elements inside them
-                    const styledSpans = doc.querySelectorAll('span[style*="color:"], span[style*="background-color:"]');
-                    styledSpans.forEach(span => {
-                        processInnerFormatting(span);
+                    // 平铺所有剩余的嵌套样式
+                    const allSpans = doc.querySelectorAll('span');
+                    allSpans.forEach(span => {
+                        if (span.querySelector('span, strong, em, u, b, i')) {
+                            const fragment = flattenFormatting(span);
+                            span.parentNode.insertBefore(fragment, span);
+                            span.parentNode.removeChild(span);
+                        }
                     });
 
                     return doc.body.innerHTML;
                 }
 
-
-
-
-
-
-                    console.log(result);
+                console.log(result);
                 result = processColorLinks(result);
                 console.log(result);
                 siyuan = result;
+                html = null;
 
             }
         }
