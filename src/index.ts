@@ -51,7 +51,7 @@ export default class PluginText extends Plugin {
             preserveColors: false // 添加保留Word颜色选项
         }
         await this.loadData(STORAGE_NAME);
-        console.log(this.data[STORAGE_NAME]);
+        // console.log(this.data[STORAGE_NAME]);
 
         this.settingUtils = new SettingUtils({
             plugin: this, name: SETTINGS_NAME
@@ -134,7 +134,7 @@ export default class PluginText extends Plugin {
         let text = event.detail.textPlain;
         let html = event.detail.textHTML;
         let siyuan = event.detail.siyuanHTML;
-        console.log(event.detail);
+        // console.log(event.detail);
         if (this.data[STORAGE_NAME].LaTeXConversion) {
             if (this.data[STORAGE_NAME].inlineLatex) { // Change from this.settingUtils.get("inlineLatex")
                 // Convert block math to inline math and remove newlines
@@ -179,7 +179,7 @@ export default class PluginText extends Plugin {
             // text = text.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             // html = html.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
-            console.log(html);
+            // console.log(html);
             html = convertOfficeListToHtml(html);
 
 
@@ -405,6 +405,13 @@ export default class PluginText extends Plugin {
                             span.parentNode.insertBefore(fragment, span);
                             span.parentNode.removeChild(span);
                         }
+                    });
+
+                    //修复$不能添加颜色： span[data-type]有"backslash"，改为span[data-type]="text"
+                    const backslashSpans = doc.querySelectorAll("span[data-type*='backslash']");
+                    backslashSpans.forEach(span => {
+                        const dataType = span.getAttribute('data-type').replace(/backslash/g, 'text');
+                        span.setAttribute('data-type', dataType);
                     });
 
                     return doc.body.innerHTML;
@@ -900,7 +907,7 @@ export default class PluginText extends Plugin {
                             const updatedContent = content.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');
                             let lute = window.Lute.New();
                             let newBlockDom = lute.Md2BlockDOM(updatedContent)
-                            console.log(newBlockDom)
+                            // console.log(newBlockDom)
                             // 替换newBlockDom的data-node-id="xxx"为blockId
                             newBlockDom = newBlockDom.replace(/data-node-id="[^"]*"/, `data-node-id="${blockId}"`);
                             await updateBlock('markdown', updatedContent, blockId);
