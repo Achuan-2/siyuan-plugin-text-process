@@ -203,37 +203,52 @@ export default class PluginText extends Plugin {
                 function color2link(html) {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
+
                     // 找到所有具有 style 属性的 span 元素
                     const spans = doc.querySelectorAll('span[style]');
+
                     spans.forEach(span => {
+                        // 检查文本内容是否只有一个空格
+                        const textContent = span.textContent;
+                        if (textContent === ' ') {
+                            // 如果只有一个空格，跳过这个 span
+                            return;
+                        }
+
                         const style = span.getAttribute('style');
                         const colorMatch = style.match(/color\s*:\s*([^;]+)/i);
                         const bgColorMatch = style.match(/background-color\s*:\s*([^;]+)/i) || style.match(/background\s*:\s*([^;]+)/i);
+
                         if (colorMatch || bgColorMatch) {
                             // 创建 <a> 元素
                             const a = doc.createElement('a');
+
                             if (colorMatch) {
                                 let color = colorMatch[1].trim();
                                 color = color.split(';')[0]; // 清理颜色值
                                 a.href += `color:${color};`;
                             }
+
                             if (bgColorMatch) {
                                 let bgColor = bgColorMatch[1].trim();
                                 bgColor = bgColor.split(';')[0]; // 清理颜色值
-                                // 使用 data-bg-color 属性存储背景颜色
-                                a.href += "background-color:" + bgColor+";";
+                                a.href += "background-color:" + bgColor + ";";
                             }
+
                             // 将 span 的所有子节点移动到 a 元素中
                             while (span.firstChild) {
                                 a.appendChild(span.firstChild);
                             }
+
                             // 用 a 元素替换 span 元素
                             span.parentNode.replaceChild(a, span);
                         }
                     });
+
                     // 将修改后的 DOM 树序列化回 HTML 字符串
                     return doc.body.innerHTML;
                 }
+
 
 
 
