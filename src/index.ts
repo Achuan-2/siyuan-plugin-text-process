@@ -374,7 +374,7 @@ export default class PluginText extends Plugin {
                     }
 
                     // 处理所有带有 data-type="a" 的 span
-                    const formattedLinks = doc.querySelectorAll('span[data-type*="a"]');
+                    const formattedLinks = doc.querySelectorAll('span[data-type*="a"][data-href^="color:"], span[data-type*="a"][data-href^="background-color:"]');
                     formattedLinks.forEach(link => {
                         const dataType = link.getAttribute('data-type') || '';
                         if (dataType.split(' ').includes('a')) {
@@ -417,9 +417,9 @@ export default class PluginText extends Plugin {
                     return doc.body.innerHTML;
                 }
 
-                // console.log(result);
+                console.log(result);
                 result = processColorLinks(result);
-                // console.log(result);
+                console.log(result);
                 siyuan = result;
                 html = null;
 
