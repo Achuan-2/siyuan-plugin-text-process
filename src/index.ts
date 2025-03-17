@@ -157,13 +157,14 @@ export default class PluginText extends Plugin {
 
         }
         if (this.data[STORAGE_NAME].removeSpaces) {
-            // Skip block reference patterns ((id 'text'))
-            if (text.match(/\(\([0-9]{14}-[a-zA-Z0-9]{7}\s+'[^']+'\)\)/)) {
-                // Don't process spaces for block references
-            } else if (text.match(/\{\{\s*select\s+[^\}]+\}\}/)) {
-                // Don't process spaces for block embeds
+            // Skip block reference patterns ((id 'text')), asset references <<assets/xxx "xxxx">>, 
+            // and other special patterns
+            if (text.match(/\(\([0-9]{14}-[a-zA-Z0-9]{7}\s+'[^']+'\)\)/) || 
+            text.match(/<<\s*assets\/[^>]*\s+"[^"]*"\s*>>/) ||
+            text.match(/\{\{\s*select\s+[^\}]+\}\}/)) {
+            // Don't process spaces for special references
             } else {
-                text = text.replace(/\s/g, ''); // Remove all spaces for non-block references
+            text = text.replace(/\s/g, ''); // Remove all spaces for non-block references
             }
             // html = html.replace(/\s/g, ''); // 去除空格
         }
