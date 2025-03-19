@@ -164,7 +164,8 @@ export default class PluginText extends Plugin {
             text.match(/\{\{\s*select\s+[^\}]+\}\}/)) {
             // Don't process spaces for special references
             } else {
-            text = text.replace(/\s/g, ''); // Remove all spaces for non-block references
+            // Remove spaces but preserve newline characters
+            text = text.replace(/[^\S\n]/g, ''); // Removes all whitespace except newlines
             }
             // html = html.replace(/\s/g, ''); // 去除空格
         }
@@ -422,7 +423,7 @@ export default class PluginText extends Plugin {
                 result = processColorLinks(result);
                 console.log(result);
                 siyuan = result;
-                html = null;
+                // html = null;
 
             }
         }
@@ -547,6 +548,7 @@ export default class PluginText extends Plugin {
             if (block.dataset.type === "NodeList") {
                 menuItems.push({
                     label: this.i18n.blockOperations.copyFirstLevel,
+                    hotkey: "",
                     click: async () => {
                         try {
                             const blockId = block.dataset.nodeId;
