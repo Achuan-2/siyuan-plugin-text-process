@@ -2,15 +2,16 @@
   "name": "siyuan-plugin-text-process",
   "author": "Achuan-2",
   "url": "https://github.com/Achuan-2/siyuan-plugin-text-process",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "minAppVersion": "3.0.12",
   "backends": [
     "windows",
     "linux",
     "darwin",
-    "docker",
     "ios",
-    "android"
+    "android",
+    "harmony",
+    "docker"
   ],
   "frontends": [
     "desktop",
