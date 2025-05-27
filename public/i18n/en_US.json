@@ -21,6 +21,7 @@
         "removeLinks": "Remove Links Keep Text",
         "removeSpaces": "Remove Spaces",
         "removeNewlines": "Remove Newlines",
+        "convertChineseToEnglish": "Convert Chinese Punctuation to English",
         "adjustImageWidth": "Adjust Image Width",
         "imageWidthDialog": {
             "title": "Adjust Image Width",

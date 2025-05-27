@@ -21,6 +21,7 @@
         "removeLinks": "链接转文字",
         "removeSpaces": "去除空格",
         "removeNewlines": "去除换行",
+        "convertChineseToEnglish": "中文符号转英文符号",
         "adjustImageWidth": "调整图片宽度",
         "imageWidthDialog": {
             "title": "调整图片宽度",

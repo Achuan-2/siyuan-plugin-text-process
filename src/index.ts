@@ -1082,6 +1082,56 @@ export default class PluginText extends Plugin {
             }
         });
 
+        // Add new menu item for converting Chinese punctuation to English
+        menuItems.push({
+            label: this.i18n.blockOperations.convertChineseToEnglish,
+            click: async () => {
+                let protyle = detail.protyle;
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const blockHTML = block.outerHTML;
+                        if (blockHTML) {
+                            // 匹配不在HTML标签内的中文符号
+                            const regex = /(?<!<[^>]*)(。|，|；|！|？|（|）|：|“|”|‘|’|【|】|｛|｝)(?![^<]*>)/g;
+
+                            // 中文符号到英文符号的映射表
+                            const symbolMap = {
+                                "。": ".",
+                                "，": ",",
+                                "；": ";",
+                                "！": "!",
+                                "？": "?",
+                                "（": "(",
+                                "）": ")",
+                                "：": ":",
+                                "‘": "'",
+                                "’": "'",
+                                "“": '"',
+                                "”": '"',
+                                "【": "[",
+                                "】": "]",
+                                "｛": "{",
+                                "｝": "}"
+                            };
+
+                            let updatedContent = blockHTML.replace(regex, (match) => {
+                                return symbolMap[match] || match;
+                            });
+
+                            // 更新块内容
+                            if (updatedContent !== blockHTML) {
+                                await updateBlock('dom', updatedContent, blockId);
+                                protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error converting Chinese punctuation to English:', e);
+                }
+            }
+        });
+
         // Add new menu item for adjusting image width
         menuItems.push({
             label: this.i18n.blockOperations.adjustImageWidth,
