@@ -159,13 +159,13 @@ export default class PluginText extends Plugin {
         if (this.data[STORAGE_NAME].removeSpaces) {
             // Skip block reference patterns ((id 'text')), asset references <<assets/xxx "xxxx">>, 
             // and other special patterns
-            if (text.match(/\(\([0-9]{14}-[a-zA-Z0-9]{7}\s+'[^']+'\)\)/) || 
-            text.match(/<<\s*assets\/[^>]*\s+"[^"]*"\s*>>/) ||
-            text.match(/\{\{\s*select\s+[^\}]+\}\}/)) {
-            // Don't process spaces for special references
+            if (text.match(/\(\([0-9]{14}-[a-zA-Z0-9]{7}\s+'[^']+'\)\)/) ||
+                text.match(/<<\s*assets\/[^>]*\s+"[^"]*"\s*>>/) ||
+                text.match(/\{\{\s*select\s+[^\}]+\}\}/)) {
+                // Don't process spaces for special references
             } else {
-            // Remove spaces but preserve newline characters
-            text = text.replace(/[^\S\n]/g, ''); // Removes all whitespace except newlines
+                // Remove spaces but preserve newline characters
+                text = text.replace(/[^\S\n]/g, ''); // Removes all whitespace except newlines
             }
             // html = html.replace(/\s/g, ''); // 去除空格
         }
@@ -292,10 +292,10 @@ export default class PluginText extends Plugin {
 
                 let result = lute.HTML2BlockDOM(html);
                 // 处理意外产生的`[[](bacground-color:xx)`和`[[](color:xx)`，改为<span data-type="a" href="xxx">[<span>标签
-                
+
                 result = result.replace(/\[(.*?)\]\(((?:background-color|color):.*?)\)/g,
                     '<span data-type="a" data-href="$2">$1<span>');
-                
+
                 // console.log(result)
                 // Convert the color links back to styled spans using DOM parser
 
@@ -331,7 +331,7 @@ export default class PluginText extends Plugin {
                                 fragment.appendChild(span);
                             } else if (node.nodeType === Node.ELEMENT_NODE) {
                                 const tag = node.tagName.toLowerCase();
-                                if (['span', 'strong', 'em', 'u', 'b', 'i', 'sup', 'sub', 'mark','s'].includes(tag)) {
+                                if (['span', 'strong', 'em', 'u', 'b', 'i', 'sup', 'sub', 'mark', 's'].includes(tag)) {
                                     const nestedFragment = flattenFormatting(node, currentTypes, currentStyle);
                                     fragment.appendChild(nestedFragment);
                                 } else {
