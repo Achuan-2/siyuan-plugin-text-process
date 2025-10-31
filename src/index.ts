@@ -48,7 +48,8 @@ export default class PluginText extends Plugin {
             removeSuperscript: false,  // Add new option
             removeLinks: false, // Add new option
             inlineLatex: false,  // Add inlineLatex here
-            preserveColors: false // 添加保留Word颜色选项
+            preserveColors: false, // 添加保留Word颜色选项
+            fullWidthToHalfWidth: false // 添加全角转半角选项
         }
         await this.loadData(STORAGE_NAME);
         // console.log(this.data[STORAGE_NAME]);
@@ -193,6 +194,31 @@ export default class PluginText extends Plugin {
         if (this.data[STORAGE_NAME].removeLinks) {
             text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1'); // Remove markdown links
             html = html.replace(/<a[^>]*>(.*?)<\/a>/g, '$1'); // Remove HTML links
+        }
+
+        if (this.data[STORAGE_NAME].fullWidthToHalfWidth) {
+            // Convert full-width characters to half-width
+            function toHalfWidth(str: string): string {
+                return str.replace(/[\u2000-\u200b\u202f\u205f\u3000\uff00-\uffef]/g, function(char) {
+                    const code = char.charCodeAt(0);
+                    // Full-width space and other space characters -> half-width space (U+0020)
+                    if (code >= 0x2000 && code <= 0x200B || code === 0x202F || code === 0x205F || code === 0x3000) {
+                        return ' ';
+                    }
+                    // Full-width characters (U+FF01 to U+FF5E) -> half-width (U+0021 to U+007E)
+                    if (code >= 0xFF01 && code <= 0xFF5E) {
+                        return String.fromCharCode(code - 0xFEE0);
+                    }
+                    // Full-width digits (U+FF10 to U+FF19) -> half-width (U+0030 to U+0039)
+                    if (code >= 0xFF10 && code <= 0xFF19) {
+                        return String.fromCharCode(code - 0xFEE0);
+                    }
+                    return char;
+                });
+            }
+            text = toHalfWidth(text);
+            html = toHalfWidth(html);
+            siyuan = toHalfWidth(siyuan);
         }
 
         // Word颜色处理：如果没启用保留颜色，则移除所有颜色样式
@@ -510,6 +536,14 @@ export default class PluginText extends Plugin {
         });
 
 
+
+        menu.addItem({
+            icon: this.data[STORAGE_NAME].fullWidthToHalfWidth ? "iconSelect" : "iconClose",
+            label: this.i18n.pasteOptions.fullWidthToHalfWidth,
+            click: (detail, event) => {
+                this.toggleOption("fullWidthToHalfWidth", detail);
+            }
+        });
 
         if (this.isMobile) {
             menu.fullscreen();
@@ -1128,6 +1162,51 @@ export default class PluginText extends Plugin {
                     }
                 } catch (e) {
                     console.error('Error converting Chinese punctuation to English:', e);
+                }
+            }
+        });
+
+        // Add new menu item for full-width to half-width conversion
+        menuItems.push({
+            label: this.i18n.blockOperations.fullWidthToHalfWidth,
+            click: async () => {
+                let protyle = detail.protyle;
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const blockHTML = block.outerHTML;
+                        if (blockHTML) {
+                            // Convert full-width characters to half-width
+                            function toHalfWidth(str: string): string {
+                                return str.replace(/[\u2000-\u200b\u202f\u205f\u3000\uff00-\uffef]/g, function(char) {
+                                    const code = char.charCodeAt(0);
+                                    // Full-width space and other space characters -> half-width space (U+0020)
+                                    if (code >= 0x2000 && code <= 0x200B || code === 0x202F || code === 0x205F || code === 0x3000) {
+                                        return ' ';
+                                    }
+                                    // Full-width characters (U+FF01 to U+FF5E) -> half-width (U+0021 to U+007E)
+                                    if (code >= 0xFF01 && code <= 0xFF5E) {
+                                        return String.fromCharCode(code - 0xFEE0);
+                                    }
+                                    // Full-width digits (U+FF10 to U+FF19) -> half-width (U+0030 to U+0039)
+                                    if (code >= 0xFF10 && code <= 0xFF19) {
+                                        return String.fromCharCode(code - 0xFEE0);
+                                    }
+                                    return char;
+                                });
+                            }
+
+                            let updatedContent = toHalfWidth(blockHTML);
+
+                            // 更新块内容
+                            if (updatedContent !== blockHTML) {
+                                await updateBlock('dom', updatedContent, blockId);
+                                protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error converting full-width to half-width:', e);
                 }
             }
         });

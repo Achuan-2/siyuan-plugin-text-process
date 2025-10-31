@@ -9,7 +9,8 @@
         "convertList": "Office列表粘贴适配",
         "removeSuperscript": "去除上标",
         "removeLinks": "链接转文字",
-        "preserveColors": "保留富文本颜色"
+        "preserveColors": "保留富文本颜色",
+        "fullWidthToHalfWidth": "全角转半角"
     },
     "blockOperations": {
         "mergeBlocks": "合并块",
@@ -43,7 +44,8 @@
             "confirm": "确认",
             "cancel": "取消"
         },
-        "convertReference": "块引转超链接"
+        "convertReference": "块引转超链接",
+        "fullWidthToHalfWidth": "全角转半角"
     },
     "messages": {
         "firstLevelCopied": "已复制内容",

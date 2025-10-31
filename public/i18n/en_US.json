@@ -9,7 +9,8 @@
         "convertList": "Convert Rich Text List",
         "removeSuperscript": "Remove Superscript",
         "removeLinks": "Remove Links Keep Text",
-        "preserveColors": "Preserve HTML Colors"
+        "preserveColors": "Preserve HTML Colors",
+        "fullWidthToHalfWidth": "Full-width to Half-width"
     },
     "blockOperations": {
         "mergeBlocks": "Merge Blocks",
@@ -43,7 +44,8 @@
             "confirm": "Confirm",
             "cancel": "Cancel"
         },
-        "convertReference": "Convert Block Reference to Link"
+        "convertReference": "Convert Block Reference to Link",
+        "fullWidthToHalfWidth": "Full-width to Half-width"
     },
     "messages": {
         "firstLevelCopied": "First level items copied to clipboard",
