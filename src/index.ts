@@ -199,7 +199,7 @@ export default class PluginText extends Plugin {
         if (this.data[STORAGE_NAME].fullWidthToHalfWidth) {
             // Convert full-width characters to half-width
             function toHalfWidth(str: string): string {
-                return str.replace(/[\u2000-\u200b\u202f\u205f\u3000\uff00-\uffef]/g, function(char) {
+                return str.replace(/[\u2000-\u200b\u202f\u205f\u3000\uff00-\uffef]/g, function (char) {
                     const code = char.charCodeAt(0);
                     // Full-width space and other space characters -> half-width space (U+0020)
                     if (code >= 0x2000 && code <= 0x200B || code === 0x202F || code === 0x205F || code === 0x3000) {
@@ -1178,7 +1178,7 @@ export default class PluginText extends Plugin {
                         if (blockHTML) {
                             // Convert full-width characters to half-width
                             function toHalfWidth(str: string): string {
-                                return str.replace(/[\u2000-\u200b\u202f\u205f\u3000\uff00-\uffef]/g, function(char) {
+                                return str.replace(/[\u2000-\u200b\u202f\u205f\u3000\uff00-\uffef]/g, function (char) {
                                     const code = char.charCodeAt(0);
                                     // Full-width space and other space characters -> half-width space (U+0020)
                                     if (code >= 0x2000 && code <= 0x200B || code === 0x202F || code === 0x205F || code === 0x3000) {
