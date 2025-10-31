@@ -1,7 +1,7 @@
 {
     "addTopBarIcon": "粘贴时自动处理",
     "pasteOptions": {
-        "LaTeXConversion": "LaTex公式自动转换(\\[,\\()",
+        "LaTeXConversion": "LaTex公式自动转换",
         "removeNewlines": "去除换行",
         "removeSpaces": "去除空格",
         "removeEmptyLines": "去除空行",
