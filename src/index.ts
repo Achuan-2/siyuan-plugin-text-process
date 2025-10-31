@@ -576,6 +576,48 @@ export default class PluginText extends Plugin {
         let menu = detail.menu;
         const menuItems = [];
 
+        if (detail.blockElements.some(block => block.dataset.type === "NodeList")) {
+            menuItems.push({
+                label: this.i18n.blockOperations.copyFirstLevelMarkdown,
+                click: async () => {
+                    try {
+                        let allFirstLevelItems = [];
+                        for (const block of detail.blockElements) {
+                            if (block.dataset.type === "NodeList") {
+                                const blockId = block.dataset.nodeId;
+                                const rootList = document.querySelector(`[data-node-id="${blockId}"]`);
+                                const isOrdered = rootList.getAttribute('data-subtype') === 'o';
+                                const isTaskList = rootList.getAttribute('data-subtype') === 't';
+
+                                const firstLevelItems = Array.from(rootList.querySelectorAll(':scope > .li'))
+                                    .map((li, index) => {
+                                        const text = li.querySelector('.p')?.textContent?.trim() || '';
+                                        if (isOrdered) {
+                                            return `${index + 1}. ${text}`;
+                                        } else if (isTaskList) {
+                                            const checkbox = li.querySelector('input[type="checkbox"]') as HTMLInputElement;
+                                            const checked = checkbox?.checked;
+                                            const symbol = checked ? '- [x]' : '- [ ]';
+                                            return `${symbol} ${text}`;
+                                        } else {
+                                            return `- ${text}`;
+                                        }
+                                    });
+                                allFirstLevelItems.push(...firstLevelItems);
+                            }
+                        }
+                        if (allFirstLevelItems.length > 0) {
+                            const content = allFirstLevelItems.join('\n');
+                            navigator.clipboard.writeText(content);
+                            showMessage(this.i18n.messages.firstLevelCopied);
+                        }
+                    } catch (e) {
+                        console.error('Error copying first level items:', e);
+                    }
+                }
+            });
+        }
+
         if (detail.blockElements && detail.blockElements.length === 1) {
             const block = detail.blockElements[0];
 

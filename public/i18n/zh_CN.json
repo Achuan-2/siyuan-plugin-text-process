@@ -16,6 +16,7 @@
         "mergeBlocks": "合并块",
         "splitBlocks": "拆分块",
         "copyFirstLevel": "仅复制一级列表（带符号）",
+        "copyFirstLevelMarkdown": "仅复制一级列表（markdown）",
         "copyMultiLevel": "复制到小红书",
         "convertToMarkdownList": "列表符号转markdown列表",
         "removeSuperscript": "去除上标",

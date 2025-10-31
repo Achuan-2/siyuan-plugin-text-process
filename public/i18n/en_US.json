@@ -16,6 +16,7 @@
         "mergeBlocks": "Merge Blocks",
         "splitBlocks": "Split Blocks",
         "copyFirstLevel": "Copy First Level List Items",
+        "copyFirstLevelMarkdown": "Copy First Level List Items (Markdown)",
         "copyMultiLevel": "Copy Multi Level List Items",
         "convertToMarkdownList": "Convert to Markdown List",
         "removeSuperscript": "Remove Superscript",
