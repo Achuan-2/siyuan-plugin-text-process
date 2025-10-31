@@ -1,4 +1,12 @@
 
+## v0.3.0 / 20251031
+
+- ✨ 列表第一层级全选 [#15](https://github.com/Achuan-2/siyuan-plugin-text-process/issues/15)
+- ✨ 添加全角转半角功能 [#26](https://github.com/Achuan-2/siyuan-plugin-text-process/issues/26)
+- 🎨 去除换行优化：句首是英文添加空格 [#24](https://github.com/Achuan-2/siyuan-plugin-text-process/issues/24)
+- ✨ feat(菜单): 添加复制为富文本功能
+
+
 ## v0.2.2 / 2025.05.27
 
 - ✨ feat(菜单): 添加中文符号转英文符号功能
