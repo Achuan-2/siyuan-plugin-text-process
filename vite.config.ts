@@ -5,6 +5,8 @@ import livereload from "rollup-plugin-livereload"
 import { svelte } from "@sveltejs/vite-plugin-svelte"
 import zipPack from "vite-plugin-zip-pack";
 import fg from 'fast-glob';
+import fs from 'fs';
+import { execSync } from 'child_process';
 
 import vitePluginYamlI18n from './yaml-plugin';
 
@@ -41,6 +43,25 @@ export default defineConfig({
                 { src: "./icon.png", dest: "./" }
             ],
         }),
+
+        // Auto copy to SiYuan plugins directory in dev mode
+        ...(isDev ? [
+            {
+                name: 'auto-copy-to-siyuan',
+                writeBundle() {
+                    try {
+                        // Run the copy script after build
+                        execSync('node --no-warnings ./scripts/make_dev_copy.js', {
+                            stdio: 'inherit',
+                            cwd: process.cwd()
+                        });
+                    } catch (error) {
+                        console.warn('Auto copy to SiYuan failed:', error.message);
+                        console.warn('You can manually run: pnpm run make-link-win');
+                    }
+                }
+            }
+        ] : []),
 
     ],
 
