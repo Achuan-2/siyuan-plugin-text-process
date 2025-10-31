@@ -149,7 +149,7 @@ export default class PluginText extends Plugin {
             }
         }
         if (this.data[STORAGE_NAME].removeNewlines) {
-            text = text.replace(/\n/g, ''); // 去除换行
+            text = text.replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, ''); // 去除换行，如果换行后是英文单词开头则加空格
             // html 把br和\n替换为空字符
             html = html.replace(/<br>/g, ''); // 去除换行
             // html 把p标签的内容都合并为一个
@@ -1005,12 +1005,12 @@ export default class PluginText extends Plugin {
                         if (blockHTML) {
                             // Remove br tags and merge p tags
                             let updatedContent = blockHTML;
-                            // Remove <br> tags
-                            updatedContent = updatedContent.replace(/<br\s*\/?>/g, '');
+                            // Remove <br> tags, add space if followed by English letter
+                            updatedContent = updatedContent.replace(/<br\s*\/?>(?=[a-zA-Z])/g, ' ').replace(/<br\s*\/?>/g, '');
                             // Merge adjacent paragraph contents
                             updatedContent = updatedContent.replace(/<\/p>\s*<p[^>]*>/g, '');
-                            // 去除\n
-                            updatedContent = updatedContent.replace(/\n/g, '');
+                            // 去除\n，如果换行后是英文单词开头则加空格
+                            updatedContent = updatedContent.replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, '');
                             if (updatedContent !== blockHTML) {
                                 await updateBlock('dom', updatedContent, blockId);
                                 protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
