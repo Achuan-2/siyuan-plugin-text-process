@@ -1443,6 +1443,35 @@ export default class PluginText extends Plugin {
                 }
             }
         });
+
+        menuItems.push({
+            label: "复制为富文本",
+            click: async () => {
+                try {
+                    let combinedHTML = '';
+                    for (const block of detail.blockElements) {
+                        const blockHTML = block.innerHTML;
+                        let lute = window.Lute.New();
+                        console.log('Block HTML:', blockHTML);
+                        const html = lute.BlockDOM2HTML(blockHTML);
+                        // 将 span data-type="strong" 改为 strong 元素
+                        let processedHTML = html.replace(/<span data-type="strong"([^>]*)>(.*?)<\/span>/g, '<strong$1>$2</strong>');
+                        combinedHTML += processedHTML + '\n';
+                    }
+                    // 复制到剪贴板作为富文本
+                    await navigator.clipboard.write([
+                        new ClipboardItem({
+                            'text/html': new Blob([combinedHTML.trim()], { type: 'text/html' }),
+                        })
+                    ]);
+                    showMessage("已复制为富文本");
+                } catch (e) {
+                    console.error('Error copying as rich text:', e);
+                    showMessage("复制为富文本失败");
+                }
+            }
+        });
+
         // Add new menu item for multi-level list copying
         menu.addItem({
             icon: "iconPaste",
