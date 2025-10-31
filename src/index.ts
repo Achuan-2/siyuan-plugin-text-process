@@ -19,7 +19,7 @@ import {
     ICardData
 } from "siyuan";
 
-import { appendBlock, deleteBlock, setBlockAttrs, getBlockAttrs, pushMsg, pushErrMsg, sql, refreshSql, renderSprig, getChildBlocks, insertBlock, renameDocByID, prependBlock, updateBlock, createDocWithMd, getDoc, getBlockKramdown, getBlockDOM } from "./api";
+import { appendBlock, deleteBlock, setBlockAttrs, getBlockAttrs, pushMsg, pushErrMsg, sql, refreshSql, renderSprig, getChildBlocks, insertBlock, renameDocByID, prependBlock, updateBlock, createDocWithMd, getDoc, getBlockKramdown, getBlockDOM, exportPreview } from "./api";
 import "@/index.scss";
 
 
@@ -1571,21 +1571,110 @@ export default class PluginText extends Plugin {
                 try {
                     let combinedHTML = '';
                     for (const block of detail.blockElements) {
-                        const blockHTML = block.innerHTML;
-                        let lute = window.Lute.New();
-                        console.log('Block HTML:', blockHTML);
-                        const html = lute.BlockDOM2HTML(blockHTML);
-                        // 将 span data-type="strong" 改为 strong 元素
-                        let processedHTML = html.replace(/<span data-type="strong"([^>]*)>(.*?)<\/span>/g, '<strong$1>$2</strong>');
-                        combinedHTML += processedHTML + '\n';
+                        // Use the export preview API to get the HTML for the block
+                        const blockId = block.dataset.nodeId;
+                        try {
+                            const res: any = await exportPreview(blockId);
+                            let html = res && res.html ? res.html : '';
+                            if (!html) continue;
+
+                            // Parse the HTML and convert <span data-type="strong" ...> to <strong ...>
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+
+                            // Find spans containing strong in their data-type (could be multiple types)
+                            const spans = doc.querySelectorAll('span[data-type*="strong"]');
+                            spans.forEach(span => {
+                                const strong = doc.createElement('strong');
+
+                                // Copy attributes except data-type
+                                for (let i = 0; i < span.attributes.length; i++) {
+                                    const attr = span.attributes[i];
+                                    if (attr.name === 'data-type') continue;
+                                    // keep style and other attrs
+                                    strong.setAttribute(attr.name, attr.value);
+                                }
+
+                                // preserve inner HTML
+                                strong.innerHTML = span.innerHTML;
+
+                                // replace span with strong
+                                span.parentNode.replaceChild(strong, span);
+                            });
+
+                            // Replace siyuan CSS variables in inline styles with concrete values
+                            const cssVarMap: { [key: string]: string } = {
+                                '--b3-font-color1': '#e21e11',
+                                '--b3-font-color2': '#f1781c',
+                                '--b3-font-color3': '#2183ce',
+                                '--b3-font-color4': '#11ad81',
+                                '--b3-font-color5': '#878484',
+                                '--b3-font-color6': '#3fada5',
+                                '--b3-font-color7': '#faad14',
+                                '--b3-font-color8': '#a3431f',
+                                '--b3-font-color9': '#596ab7',
+                                '--b3-font-color10': '#944194',
+                                '--b3-font-color11': '#d447c5',
+                                '--b3-font-color12': '#ee2e68',
+                                '--b3-font-color13': '#fff',
+                                '--b3-font-color14': '#6d7c11',
+                                '--b3-font-background1': '#FEDADE',
+                                '--b3-font-background2': '#fce4d2',
+                                '--b3-font-background3': '#F0F4F9',
+                                '--b3-font-background4': '#e5fae5',
+                                '--b3-font-background5': '#e2e3e4',
+                                '--b3-font-background6': '#d8faff',
+                                '--b3-font-background7': '#fef7d2',
+                                '--b3-font-background8': '#f0ede0',
+                                '--b3-font-background9': '#e9e9ff',
+                                '--b3-font-background10': '#e5daff',
+                                '--b3-font-background11': '#f5c7f0',
+                                '--b3-font-background12': '#FFD8E4',
+                                '--b3-font-background13': '#202124',
+                                '--b3-font-background14': '#f3f5e7'
+                            };
+
+                            function resolveStyleVars(styleStr: string): string {
+                                if (!styleStr) return styleStr;
+                                // Replace var(--name[,fallback]) patterns
+                                styleStr = styleStr.replace(/var\(\s*(--b3-[^) ,]+)\s*(?:,\s*([^\)]+)\s*)?\)/g, (_, varName, fallback) => {
+                                    const key = varName.trim();
+                                    if (cssVarMap[key]) return cssVarMap[key];
+                                    return fallback ? fallback.trim() : _;
+                                });
+                                // Also replace direct occurrences of the variable name (e.g., --b3-font-color1)
+                                styleStr = styleStr.replace(/(--b3-[a-z0-9-]+)/g, (m) => cssVarMap[m] || m);
+                                return styleStr;
+                            }
+
+                            // Walk all elements with style attribute and replace variables
+                            const styledEls = doc.querySelectorAll('[style]');
+                            styledEls.forEach(el => {
+                                const s = el.getAttribute('style');
+                                const resolved = resolveStyleVars(s || '');
+                                if (resolved !== s) {
+                                    el.setAttribute('style', resolved);
+                                }
+                            });
+
+                            // Append processed HTML
+                            combinedHTML += doc.body.innerHTML + '\n';
+                        } catch (err) {
+                            console.error('Error fetching preview for block', block.dataset.nodeId, err);
+                        }
                     }
-                    // 复制到剪贴板作为富文本
-                    await navigator.clipboard.write([
-                        new ClipboardItem({
-                            'text/html': new Blob([combinedHTML.trim()], { type: 'text/html' }),
-                        })
-                    ]);
-                    showMessage("已复制为富文本");
+
+                    // Copy combined HTML to clipboard as rich text
+                    if (combinedHTML.trim()) {
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'text/html': new Blob([combinedHTML.trim()], { type: 'text/html' }),
+                            })
+                        ]);
+                        showMessage("已复制为富文本");
+                    } else {
+                        showMessage("没有可复制的富文本内容");
+                    }
                 } catch (e) {
                     console.error('Error copying as rich text:', e);
                     showMessage("复制为富文本失败");

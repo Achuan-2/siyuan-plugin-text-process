@@ -438,6 +438,19 @@ export async function exportMdContent(id: DocumentId): Promise<IResExportMdConte
     return request(url, data);
 }
 
+/**
+ * Get preview HTML for a document/block (export preview)
+ * request param: { id: string }
+ * response: { html: string, ... }
+ */
+export async function exportPreview(id: DocumentId | BlockId): Promise<any> {
+    let data = {
+        id: id
+    }
+    let url = '/api/export/preview';
+    return request(url, data);
+}
+
 export async function exportResources(paths: string[], name: string): Promise<IResExportResources> {
     let data = {
         paths: paths,
