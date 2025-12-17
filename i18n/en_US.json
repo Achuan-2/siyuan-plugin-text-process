@@ -7,6 +7,7 @@
         "removeEmptyLines": "Remove Empty Lines",
         "addEmptyLines": "Add Empty Lines",
         "convertList": "Convert Rich Text List",
+        "convertWordFormula": "Convert Word Formula to Markdown",
         "removeSuperscript": "Remove Superscript",
         "removeLinks": "Remove Links Keep Text",
         "preserveColors": "Preserve HTML Colors",

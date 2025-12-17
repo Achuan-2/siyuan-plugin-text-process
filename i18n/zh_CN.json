@@ -7,6 +7,7 @@
         "removeEmptyLines": "去除空行",
         "addEmptyLines": "添加空行",
         "convertList": "Office列表粘贴适配",
+        "convertWordFormula": "Word公式转Markdown",
         "removeSuperscript": "去除上标",
         "removeLinks": "链接转文字",
         "preserveColors": "保留富文本颜色",
