@@ -62,22 +62,19 @@ if (name === null) {
 const targetPath = `${targetDir}/${name}`;
 
 /**
- * 4. Create target directory and copy contents
+ * 4. Create target directory if it doesn't exist
  */
-log(`>>> Creating target directory: ${targetPath}`);
+log(`>>> Ensuring target directory exists: ${targetPath}`);
 if (!fs.existsSync(targetPath)) {
     fs.mkdirSync(targetPath, { recursive: true });
     log(`Created directory: ${targetPath}`);
 } else {
-    // Clean existing directory contents
-    log(`>>> Cleaning existing directory: ${targetPath}`);
-    fs.rmSync(targetPath, { recursive: true, force: true });
-    fs.mkdirSync(targetPath, { recursive: true });
-    log(`Cleaned and recreated directory: ${targetPath}`);
+    log(`Target directory already exists, will update files incrementally`);
 }
 
 /**
- * 5. Copy all contents from dev directory to target directory
+ * 5. Copy/update all contents from dev directory to target directory
+ * This will only update changed files instead of deleting everything
  */
 copyDirectory(devDir, targetPath);
-log(`>>> Successfully copied all files to SiYuan plugins directory!`);
+log(`>>> Successfully synchronized all files to SiYuan plugins directory!`);
