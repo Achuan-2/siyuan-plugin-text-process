@@ -135,6 +135,21 @@ export default class PluginText extends Plugin {
         let text = event.detail.textPlain;
         let html = event.detail.textHTML;
         let siyuan = event.detail.siyuanHTML;
+
+        const processedOps: string[] = [];
+        let lastText = text;
+        let lastHtml = html;
+        let lastSiyuan = siyuan;
+
+        const checkChange = (label: string) => {
+            if (text !== lastText || html !== lastHtml || siyuan !== lastSiyuan) {
+                processedOps.push(label);
+                lastText = text;
+                lastHtml = html;
+                lastSiyuan = siyuan;
+            }
+        };
+
         // console.log(event.detail);
         if (this.data[STORAGE_NAME].LaTeXConversion) {
             if (this.data[STORAGE_NAME].inlineLatex) { // Change from this.settingUtils.get("inlineLatex")
@@ -148,6 +163,7 @@ export default class PluginText extends Plugin {
                 text = text.replace(/\\\[(.*?)\\\]/gs, '\n$$$$$1$$$$\n'); // LaTeX block math
                 text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
             }
+            checkChange((this.i18n.pasteOptions as any).LaTeXConversion);
         }
         if (this.data[STORAGE_NAME].removeNewlines) {
             text = text.replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, ''); // 去除换行，如果换行后是英文单词开头则加空格
@@ -155,7 +171,7 @@ export default class PluginText extends Plugin {
             html = html.replace(/<br>/g, ''); // 去除换行
             // html 把p标签的内容都合并为一个
             html = html.replace(/<\/p><p[^>]*>/g, ''); // 合并p标签内容
-
+            checkChange((this.i18n.pasteOptions as any).removeNewlines);
         }
         if (this.data[STORAGE_NAME].removeSpaces) {
             // Skip block reference patterns ((id 'text')), asset references <<assets/xxx "xxxx">>, 
@@ -169,14 +185,17 @@ export default class PluginText extends Plugin {
                 text = text.replace(/[^\S\n]/g, ''); // Removes all whitespace except newlines
             }
             // html = html.replace(/\s/g, ''); // 去除空格
+            checkChange((this.i18n.pasteOptions as any).removeSpaces);
         }
         if (this.data[STORAGE_NAME].removeEmptyLines) {
             text = text.replace(/^\s*[\r\n]/gm, ''); // 去除空行
             html = html.replace(/<\/p><p[^>]*>/g, '</br>'); // 合并p标签内容
+            checkChange((this.i18n.pasteOptions as any).removeEmptyLines);
         }
         if (this.data[STORAGE_NAME].addEmptyLines) {
             text = text.replace(/([^\n])\n([^\n])/g, '$1\n\n$2'); // 添加空行，只匹配只有一个换行的
             html = html.replace(/(<br>)(?!<br>)/g, '$1<br>'); // 添加空行，只匹配只有一个<br>的
+            checkChange((this.i18n.pasteOptions as any).addEmptyLines);
         }
         if (this.data[STORAGE_NAME].pptList) {
             // text = text.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
@@ -184,16 +203,17 @@ export default class PluginText extends Plugin {
             // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
             // console.log(html);
             html = convertOfficeListToHtml(html);
-
-
+            checkChange((this.i18n.pasteOptions as any).convertList);
         }
         if (this.data[STORAGE_NAME].removeSuperscript) {
             // text = text.replace(/\^([^\s^]+)(?=\s|$)/g, ''); // Remove superscript markers
             html = html.replace(/<sup[^>]*>.*?<\/sup>/g, ''); // Remove HTML superscript tags with any attributes
+            checkChange((this.i18n.pasteOptions as any).removeSuperscript);
         }
         if (this.data[STORAGE_NAME].removeLinks) {
             text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1'); // Remove markdown links
             html = html.replace(/<a[^>]*>(.*?)<\/a>/g, '$1'); // Remove HTML links
+            checkChange((this.i18n.pasteOptions as any).removeLinks);
         }
 
         if (this.data[STORAGE_NAME].fullWidthToHalfWidth) {
@@ -219,6 +239,7 @@ export default class PluginText extends Plugin {
             text = toHalfWidth(text);
             html = toHalfWidth(html);
             siyuan = toHalfWidth(siyuan);
+            checkChange((this.i18n.pasteOptions as any).fullWidthToHalfWidth);
         }
 
         // Word颜色处理：如果没启用保留颜色，则移除所有颜色样式
@@ -452,6 +473,7 @@ export default class PluginText extends Plugin {
                 // html = null;
 
             }
+            checkChange((this.i18n.pasteOptions as any).preserveColors);
         }
 
         event.detail.resolve({
@@ -459,6 +481,10 @@ export default class PluginText extends Plugin {
             textHTML: html,
             siyuanHTML: siyuan
         });
+
+        if (processedOps.length > 0) {
+            pushMsg(`siyuan-plugin-text-process: ${processedOps.join(', ')}`);
+        }
     }
 
     private addMenu(rect?: DOMRect) {
