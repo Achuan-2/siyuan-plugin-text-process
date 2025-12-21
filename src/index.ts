@@ -1106,13 +1106,9 @@ export default class PluginText extends Plugin {
                         const blockHTML = block.outerHTML;
                         if (blockHTML) {
                             // Remove br tags and merge p tags
-                            let updatedContent = blockHTML;
-                            // Remove <br> tags, add space if followed by English letter
-                            updatedContent = updatedContent.replace(/<br\s*\/?>(?=[a-zA-Z])/g, ' ').replace(/<br\s*\/?>/g, '');
-                            // Merge adjacent paragraph contents
-                            updatedContent = updatedContent.replace(/<\/p>\s*<p[^>]*>/g, '');
-                            // 去除\n，如果换行后是英文单词开头则加空格
-                            updatedContent = updatedContent.replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, '');
+                            let updatedContent = blockHTML.replace(/<br\s*\/?>(?=[a-zA-Z])/g, ' ').replace(/<br\s*\/?>/g, '')
+                                                            .replace(/<\/p>\s*<p[^>]*>/g, '')
+                                                            .replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, '');
                             if (updatedContent !== blockHTML) {
                                 await updateBlock('dom', updatedContent, blockId);
                                 protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
@@ -1124,6 +1120,8 @@ export default class PluginText extends Plugin {
                 }
             }
         });
+
+
         // Add new menu item for converting punctuation
         menuItems.push({
             label: "英文符号转中文符号",
@@ -1279,7 +1277,62 @@ export default class PluginText extends Plugin {
                 }
             }
         });
+        // 新增：半角转全角（只转换文本节点，保留 HTML 标签）
+        menuItems.push({
+            label: '半角转全角',
+            click: async () => {
+                let protyle = detail.protyle;
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const blockHTML = block.outerHTML;
+                        if (blockHTML) {
+                            function toFullWidthChar(ch: string) {
+                                if (ch === ' ') return '\u3000';
+                                const code = ch.charCodeAt(0);
+                                // 跳过英文字母 A-Z 和 a-z
+                                if ((code >= 0x41 && code <= 0x5A) || (code >= 0x61 && code <= 0x7A)) {
+                                    return ch;
+                                }
+                                // 跳过数字 0-9
+                                if (code >= 0x30 && code <= 0x39) {
+                                    return ch;
+                                }
+                                // 转换其他可映射的 ASCII 可见字符到全角
+                                if (code >= 0x21 && code <= 0x7E) {
+                                    return String.fromCharCode(code + 0xFEE0);
+                                }
+                                return ch;
+                            }
 
+                            function convertTextNodesHtml(html: string): string {
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(html, 'text/html');
+                                const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false);
+                                const nodes: Node[] = [];
+                                while (walker.nextNode()) {
+                                    nodes.push(walker.currentNode);
+                                }
+                                nodes.forEach(node => {
+                                    if (node.nodeValue && node.nodeValue.trim() !== '') {
+                                        node.nodeValue = node.nodeValue.replace(/[\x20-\x7E]/g, (m) => toFullWidthChar(m));
+                                    }
+                                });
+                                return doc.body.innerHTML;
+                            }
+
+                            const updatedContent = convertTextNodesHtml(blockHTML);
+                            if (updatedContent !== blockHTML) {
+                                await updateBlock('dom', updatedContent, blockId);
+                                protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error converting half-width to full-width:', e);
+                }
+            }
+        });
         // Add new menu item for adjusting image width
         menuItems.push({
             label: this.i18n.blockOperations.adjustImageWidth,
