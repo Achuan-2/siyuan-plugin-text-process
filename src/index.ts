@@ -1135,7 +1135,7 @@ export default class PluginText extends Plugin {
                         const blockHTML = block.outerHTML;
                         if (blockHTML) {
                             // 匹配不在HTML标签内的英文符号
-                            const regex = /(?<!<[^>]*)(['"]|[.,;!?()\[\]{}<>])(?![^<]*>)/g;
+                            const regex = /(?<!<[^>]*)(['\"]|[.,;:!?()\[\]{}<>])(?![^<]*>)/g;
 
                             // 记录引号状态
                             let singleQuoteIsOpen = false;
@@ -1145,6 +1145,7 @@ export default class PluginText extends Plugin {
                             const symbolMap = {
                                 ".": "。",
                                 ",": "，",
+                                ":": "：",
                                 ";": "；",
                                 "!": "！",
                                 "?": "？",
