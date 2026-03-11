@@ -33,6 +33,9 @@ export default class PluginText extends Plugin {
     private isMobile: boolean;
     private settingUtils: SettingUtils;
     private topBarElement: HTMLElement;
+    private readonly boundPasteHandler = this.eventBusPaste.bind(this);
+    private readonly boundBlockMenuHandler = this.handleBlockMenu.bind(this);
+    private readonly boundContentMenuHandler = this.handleContentMenu.bind(this);
 
     async onload() {
         const frontEnd = getFrontend();
@@ -81,7 +84,7 @@ export default class PluginText extends Plugin {
         });
         await this.settingUtils.load(); //导入配置并合并
         // 监听粘贴事件
-        this.eventBus.on("paste", this.eventBusPaste.bind(this));
+        this.eventBus.on("paste", this.boundPasteHandler);
         const topBarElement = this.addTopBar({
             icon: "iconPaste",
             title: this.i18n.addTopBarIcon,
@@ -107,7 +110,8 @@ export default class PluginText extends Plugin {
         this.updateTopBarBackground();
 
         // 添加块菜单
-        this.eventBus.on('click-blockicon', this.handleBlockMenu.bind(this));
+        this.eventBus.on('click-blockicon', this.boundBlockMenuHandler);
+        this.eventBus.on('open-menu-content', this.boundContentMenuHandler);
     }
 
 
@@ -116,16 +120,183 @@ export default class PluginText extends Plugin {
     }
 
     async onunload() {
-        this.eventBus.off("paste", this.eventBusPaste.bind(this));
-        this.eventBus.off('click-blockicon', this.handleBlockMenu.bind(this));
+        this.eventBus.off("paste", this.boundPasteHandler);
+        this.eventBus.off('click-blockicon', this.boundBlockMenuHandler);
+        this.eventBus.off('open-menu-content', this.boundContentMenuHandler);
         console.log("onunload");
     }
 
 
     uninstall() {
-        this.eventBus.off("paste", this.eventBusPaste.bind(this));
-        this.eventBus.off('click-blockicon', this.handleBlockMenu.bind(this));
+        this.eventBus.off("paste", this.boundPasteHandler);
+        this.eventBus.off('click-blockicon', this.boundBlockMenuHandler);
+        this.eventBus.off('open-menu-content', this.boundContentMenuHandler);
         console.log("uninstall");
+    }
+
+    private transformSelectedText(range: Range, transform: (text: string) => string): boolean {
+        if (!range || range.collapsed) return false;
+        const selectedText = range.toString();
+        if (!selectedText) return false;
+
+        const newText = transform(selectedText);
+        if (newText === selectedText) return false;
+
+        range.deleteContents();
+        const textNode = document.createTextNode(newText);
+        range.insertNode(textNode);
+
+        const selection = window.getSelection();
+        if (selection) {
+            const newRange = document.createRange();
+            newRange.setStartAfter(textNode);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+        }
+
+        return true;
+    }
+
+    private convertHalfWidthText(text: string): string {
+        function toFullWidthChar(ch: string) {
+            if (ch === ' ') return '\u3000';
+            const code = ch.charCodeAt(0);
+            // Skip English letters.
+            if ((code >= 0x41 && code <= 0x5A) || (code >= 0x61 && code <= 0x7A)) {
+                return ch;
+            }
+            // Skip digits.
+            if (code >= 0x30 && code <= 0x39) {
+                return ch;
+            }
+            // Convert ASCII visible characters.
+            if (code >= 0x21 && code <= 0x7E) {
+                return String.fromCharCode(code + 0xFEE0);
+            }
+            return ch;
+        }
+
+        let result = '';
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            // Preserve decimal point between digits, e.g. 7.28.
+            if (ch === '.' && i > 0 && i < text.length - 1 && /\d/.test(text[i - 1]) && /\d/.test(text[i + 1])) {
+                result += ch;
+            } else {
+                result += toFullWidthChar(ch);
+            }
+        }
+        return result;
+    }
+
+    private handleContentMenu(event: CustomEvent<any>) {
+        const { menu, range } = event.detail || {};
+        if (!menu || !range || range.collapsed) return;
+
+        const ops = [
+            {
+                label: '去除上标',
+                run: (text: string) => text
+                    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (m) => '⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(m).toString())
+                    .replace(/[⁺⁻⁼⁽⁾ⁿ]/g, (m) => ({ '⁺': '+', '⁻': '-', '⁼': '=', '⁽': '(', '⁾': ')', 'ⁿ': 'n' }[m] || m))
+            },
+            {
+                label: '去除空格',
+                run: (text: string) => text.replace(/[^\S\n]/g, '')
+            },
+            {
+                label: '去除换行',
+                run: (text: string) => text.replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, '')
+            },
+            {
+                label: '英文符号转中文符号',
+                run: (text: string) => {
+                    let singleQuoteIsOpen = false;
+                    let doubleQuoteIsOpen = false;
+                    const symbolMap = {
+                        ',': '，',
+                        ':': '：',
+                        ';': '；',
+                        '!': '！',
+                        '?': '？',
+                        '(': '（',
+                        ')': '）',
+                    };
+
+                    let converted = text.replace(/['",;:!?()]/g, (match) => {
+                        if (match === "'") {
+                            singleQuoteIsOpen = !singleQuoteIsOpen;
+                            return singleQuoteIsOpen ? '‘' : '’';
+                        }
+                        if (match === '"') {
+                            doubleQuoteIsOpen = !doubleQuoteIsOpen;
+                            return doubleQuoteIsOpen ? '“' : '”';
+                        }
+                        return symbolMap[match] || match;
+                    });
+
+                    // Convert non-decimal dots to Chinese full stop while preserving x.y patterns.
+                    converted = converted.replace(/(?<!\d)\.(?!\d)/g, '。');
+                    return converted;
+                }
+            },
+            {
+                label: '中文符号转英文符号',
+                run: (text: string) => text.replace(/(。|，|；|！|？|（|）|：|“|”|‘|’|【|】|｛|｝)/g, (match) => ({
+                    '。': '.',
+                    '，': ',',
+                    '；': ';',
+                    '！': '!',
+                    '？': '?',
+                    '（': '(',
+                    '）': ')',
+                    '：': ':',
+                    '‘': "'",
+                    '’': "'",
+                    '“': '"',
+                    '”': '"',
+                    '【': '[',
+                    '】': ']',
+                    '｛': '{',
+                    '｝': '}'
+                }[match] || match))
+            },
+            {
+                label: '全角转半角',
+                run: (text: string) => text.replace(/[\u2000-\u200b\u202f\u205f\u3000\uff00-\uffef]/g, (char) => {
+                    const code = char.charCodeAt(0);
+                    if ((code >= 0x2000 && code <= 0x200B) || code === 0x202F || code === 0x205F || code === 0x3000) {
+                        return ' ';
+                    }
+                    if (code >= 0xFF01 && code <= 0xFF5E) {
+                        return String.fromCharCode(code - 0xFEE0);
+                    }
+                    if (code >= 0xFF10 && code <= 0xFF19) {
+                        return String.fromCharCode(code - 0xFEE0);
+                    }
+                    return char;
+                })
+            },
+            {
+                label: '半角转全角',
+                run: (text: string) => this.convertHalfWidthText(text)
+            }
+        ];
+
+        const submenu = ops.map((op) => ({
+            label: op.label,
+            click: () => {
+                const ok = this.transformSelectedText(range, op.run);
+                showMessage(ok ? `已处理: ${op.label}` : `未修改: ${op.label}`);
+            }
+        }));
+
+        menu.addItem({
+            icon: 'iconPaste',
+            label: '文本处理',
+            submenu
+        });
     }
 
     private eventBusPaste(event: any) {
