@@ -326,6 +326,96 @@ export default class PluginText extends Plugin {
             }
         }));
 
+        // 添加“复制为富文本”功能：将所选片段的富文本 HTML 复制到剪贴板
+        submenu.push({
+            label: '复制为富文本',
+            click: async () => {
+                try {
+                    const fragment = range.cloneContents();
+                    const wrapper = document.createElement('div');
+                    wrapper.appendChild(fragment);
+
+                    // 处理常见的语义样式：strong, em(斜体), u(下划线), s/del(删除线), sup, sub
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(wrapper.innerHTML, 'text/html');
+                    const mapping: { [key: string]: string } = {
+                        'strong': 'strong',
+                        'em': 'em',
+                        'italic': 'em',
+                        'u': 'u',
+                        'del': 's',
+                        's': 's',
+                        'strike': 's',
+                        'sup': 'sup',
+                        'sub': 'sub'
+                    };
+
+                    Object.keys(mapping).forEach(key => {
+                        const tag = mapping[key];
+                        const spans = doc.querySelectorAll(`span[data-type*="${key}"]`);
+                        spans.forEach(span => {
+                            const el = doc.createElement(tag);
+                            for (let i = 0; i < span.attributes.length; i++) {
+                                const attr = span.attributes[i];
+                                if (attr.name === 'data-type') continue;
+                                el.setAttribute(attr.name, attr.value);
+                            }
+                            // 为 sup/sub 添加兼容性内联样式，便于在 Word 中显示
+                            if (tag === 'sup') {
+                                el.setAttribute('style', (el.getAttribute('style') || '') + 'vertical-align: super; font-size: smaller;');
+                            } else if (tag === 'sub') {
+                                el.setAttribute('style', (el.getAttribute('style') || '') + 'vertical-align: sub; font-size: smaller;');
+                            }
+                            el.innerHTML = span.innerHTML;
+                            span.parentNode?.replaceChild(el, span);
+                        });
+                    });
+
+                    // 移除颜色相关样式，但保留下划线、删除线、斜体、上下标等样式
+                    function filterStyle(styleStr: string): string {
+                        if (!styleStr) return '';
+                        return styleStr
+                            .split(';')
+                            .map(s => s.trim())
+                            .filter(s => s)
+                            .filter(decl => {
+                                const prop = decl.split(':')[0].trim().toLowerCase();
+                                // 去除与颜色/背景相关的声明以及使用 b3 变量的声明
+                                if (prop.includes('color') || prop.includes('background') || prop === 'fill' || prop === 'stroke') return false;
+                                if (decl.includes('var(--b3-')) return false;
+                                return true;
+                            })
+                            .join('; ');
+                    }
+
+                    const styledEls = doc.querySelectorAll('[style]');
+                    styledEls.forEach(el => {
+                        const s = el.getAttribute('style') || '';
+                        const filtered = filterStyle(s);
+                        if (filtered !== s) {
+                            if (filtered) el.setAttribute('style', filtered);
+                            else el.removeAttribute('style');
+                        }
+                    });
+
+                    const finalHtml = doc.body.innerHTML;
+                    if (finalHtml.trim()) {
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                'text/html': new Blob([finalHtml], { type: 'text/html' })
+                            })
+                        ]);
+                        showMessage('已复制为富文本');
+                    } else {
+                        showMessage('没有可复制的富文本内容');
+                    }
+                } catch (err) {
+                    console.error('复制为富文本失败', err);
+                    showMessage('复制为富文本失败');
+                }
+            }
+        });
+
         menu.addItem({
             icon: 'iconPaste',
             label: '文本处理',
@@ -1886,78 +1976,62 @@ export default class PluginText extends Plugin {
                             const parser = new DOMParser();
                             const doc = parser.parseFromString(html, 'text/html');
 
-                            // Find spans containing strong in their data-type (could be multiple types)
-                            const spans = doc.querySelectorAll('span[data-type*="strong"]');
-                            spans.forEach(span => {
-                                const strong = doc.createElement('strong');
-
-                                // Copy attributes except data-type
-                                for (let i = 0; i < span.attributes.length; i++) {
-                                    const attr = span.attributes[i];
-                                    if (attr.name === 'data-type') continue;
-                                    // keep style and other attrs
-                                    strong.setAttribute(attr.name, attr.value);
-                                }
-
-                                // preserve inner HTML
-                                strong.innerHTML = span.innerHTML;
-
-                                // replace span with strong
-                                span.parentNode.replaceChild(strong, span);
-                            });
-
-                            // Replace siyuan CSS variables in inline styles with concrete values
-                            const cssVarMap: { [key: string]: string } = {
-                                '--b3-font-color1': '#e21e11',
-                                '--b3-font-color2': '#f1781c',
-                                '--b3-font-color3': '#2183ce',
-                                '--b3-font-color4': '#11ad81',
-                                '--b3-font-color5': '#878484',
-                                '--b3-font-color6': '#3fada5',
-                                '--b3-font-color7': '#faad14',
-                                '--b3-font-color8': '#a3431f',
-                                '--b3-font-color9': '#596ab7',
-                                '--b3-font-color10': '#944194',
-                                '--b3-font-color11': '#d447c5',
-                                '--b3-font-color12': '#ee2e68',
-                                '--b3-font-color13': '#fff',
-                                '--b3-font-color14': '#6d7c11',
-                                '--b3-font-background1': '#FEDADE',
-                                '--b3-font-background2': '#fce4d2',
-                                '--b3-font-background3': '#F0F4F9',
-                                '--b3-font-background4': '#e5fae5',
-                                '--b3-font-background5': '#e2e3e4',
-                                '--b3-font-background6': '#d8faff',
-                                '--b3-font-background7': '#fef7d2',
-                                '--b3-font-background8': '#f0ede0',
-                                '--b3-font-background9': '#e9e9ff',
-                                '--b3-font-background10': '#e5daff',
-                                '--b3-font-background11': '#f5c7f0',
-                                '--b3-font-background12': '#FFD8E4',
-                                '--b3-font-background13': '#202124',
-                                '--b3-font-background14': '#f3f5e7'
+                            // 转换常见 span[data-type] 为语义标签（保留下划线、斜体、删除线、上下标）
+                            const mapping: { [key: string]: string } = {
+                                'strong': 'strong',
+                                'em': 'em',
+                                'italic': 'em',
+                                'u': 'u',
+                                'del': 's',
+                                's': 's',
+                                'strike': 's',
+                                'sup': 'sup',
+                                'sub': 'sub'
                             };
 
-                            function resolveStyleVars(styleStr: string): string {
-                                if (!styleStr) return styleStr;
-                                // Replace var(--name[,fallback]) patterns
-                                styleStr = styleStr.replace(/var\(\s*(--b3-[^) ,]+)\s*(?:,\s*([^\)]+)\s*)?\)/g, (_, varName, fallback) => {
-                                    const key = varName.trim();
-                                    if (cssVarMap[key]) return cssVarMap[key];
-                                    return fallback ? fallback.trim() : _;
+                            Object.keys(mapping).forEach(key => {
+                                const tag = mapping[key];
+                                const spans = doc.querySelectorAll(`span[data-type*="${key}"]`);
+                                spans.forEach(span => {
+                                    const el = doc.createElement(tag);
+                                    for (let i = 0; i < span.attributes.length; i++) {
+                                        const attr = span.attributes[i];
+                                        if (attr.name === 'data-type') continue;
+                                        el.setAttribute(attr.name, attr.value);
+                                    }
+                                    if (tag === 'sup') {
+                                        el.setAttribute('style', (el.getAttribute('style') || '') + 'vertical-align: super; font-size: smaller;');
+                                    } else if (tag === 'sub') {
+                                        el.setAttribute('style', (el.getAttribute('style') || '') + 'vertical-align: sub; font-size: smaller;');
+                                    }
+                                    el.innerHTML = span.innerHTML;
+                                    span.parentNode?.replaceChild(el, span);
                                 });
-                                // Also replace direct occurrences of the variable name (e.g., --b3-font-color1)
-                                styleStr = styleStr.replace(/(--b3-[a-z0-9-]+)/g, (m) => cssVarMap[m] || m);
-                                return styleStr;
+                            });
+
+                            // 移除颜色相关样式，保留其他文本样式
+                            function filterStyle(styleStr: string): string {
+                                if (!styleStr) return '';
+                                return styleStr
+                                    .split(';')
+                                    .map(s => s.trim())
+                                    .filter(s => s)
+                                    .filter(decl => {
+                                        const prop = decl.split(':')[0].trim().toLowerCase();
+                                        if (prop.includes('color') || prop.includes('background') || prop === 'fill' || prop === 'stroke') return false;
+                                        if (decl.includes('var(--b3-')) return false;
+                                        return true;
+                                    })
+                                    .join('; ');
                             }
 
-                            // Walk all elements with style attribute and replace variables
                             const styledEls = doc.querySelectorAll('[style]');
                             styledEls.forEach(el => {
-                                const s = el.getAttribute('style');
-                                const resolved = resolveStyleVars(s || '');
-                                if (resolved !== s) {
-                                    el.setAttribute('style', resolved);
+                                const s = el.getAttribute('style') || '';
+                                const filtered = filterStyle(s);
+                                if (filtered !== s) {
+                                    if (filtered) el.setAttribute('style', filtered);
+                                    else el.removeAttribute('style');
                                 }
                             });
 
