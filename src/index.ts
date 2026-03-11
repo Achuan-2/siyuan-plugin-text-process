@@ -1106,8 +1106,8 @@ export default class PluginText extends Plugin {
                         if (blockHTML) {
                             // Remove br tags and merge p tags
                             let updatedContent = blockHTML.replace(/<br\s*\/?>(?=[a-zA-Z])/g, ' ').replace(/<br\s*\/?>/g, '')
-                                                            .replace(/<\/p>\s*<p[^>]*>/g, '')
-                                                            .replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, '');
+                                .replace(/<\/p>\s*<p[^>]*>/g, '')
+                                .replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, '');
                             if (updatedContent !== blockHTML) {
                                 await updateBlock('dom', updatedContent, blockId);
                                 protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
