@@ -1156,6 +1156,10 @@ export default class PluginText extends Plugin {
                                 .replace(/&amp;/g, "&");
 
                             let updatedContent = decodedHTML.replace(regex, (match) => {
+                                // Keep decimal points in numbers (e.g. 7.28)
+                                if (match === '.') {
+                                    return '.';
+                                }
                                 if (match === "'") {
                                     singleQuoteIsOpen = !singleQuoteIsOpen;
                                     return singleQuoteIsOpen ? '\u2018' : '\u2019';
@@ -1166,6 +1170,8 @@ export default class PluginText extends Plugin {
                                 }
                                 return symbolMap[match] || match;
                             });
+                            // Convert non-decimal dots to Chinese full stop while preserving x.y patterns.
+                            updatedContent = updatedContent.replace(/(?<!\d)\.(?!\d)/g, '。');
                             // updatedContent的&lt；替换为&lt;，&gt；替换为&gt;
                             updatedContent = updatedContent.replace(/&lt；/g, '&lt;').replace(/&gt；/g, '&gt;');
                             // 更新块内容
@@ -1304,6 +1310,20 @@ export default class PluginText extends Plugin {
                                 return ch;
                             }
 
+                            function convertHalfWidthText(text: string): string {
+                                let result = '';
+                                for (let i = 0; i < text.length; i++) {
+                                    const ch = text[i];
+                                    // Preserve decimal point between digits, e.g. 7.28
+                                    if (ch === '.' && i > 0 && i < text.length - 1 && /\d/.test(text[i - 1]) && /\d/.test(text[i + 1])) {
+                                        result += ch;
+                                    } else {
+                                        result += toFullWidthChar(ch);
+                                    }
+                                }
+                                return result;
+                            }
+
                             function convertTextNodesHtml(html: string): string {
                                 const parser = new DOMParser();
                                 const doc = parser.parseFromString(html, 'text/html');
@@ -1314,7 +1334,7 @@ export default class PluginText extends Plugin {
                                 }
                                 nodes.forEach(node => {
                                     if (node.nodeValue && node.nodeValue.trim() !== '') {
-                                        node.nodeValue = node.nodeValue.replace(/[\x20-\x7E]/g, (m) => toFullWidthChar(m));
+                                        node.nodeValue = convertHalfWidthText(node.nodeValue);
                                     }
                                 });
                                 return doc.body.innerHTML;
