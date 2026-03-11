@@ -601,6 +601,9 @@ export default class PluginText extends Plugin {
     private async handleBlockMenu({ detail }) {
         let menu = detail.menu;
         const menuItems = [];
+        const hasListSelection = detail.blockElements?.some(
+            block => block.dataset.type === "NodeList" || block.dataset.type === "NodeListItem"
+        );
 
         if (detail.blockElements.some(block => block.dataset.type === "NodeList")) {
             menuItems.push({
@@ -822,8 +825,8 @@ export default class PluginText extends Plugin {
                 }
             }
         });
-        // Only show merge option when multiple blocks are selected
-        if (detail.blockElements && detail.blockElements.length > 1) {
+        // Only show merge option when multiple non-list blocks are selected
+        if (detail.blockElements && detail.blockElements.length > 1 && !hasListSelection) {
             menuItems.push({
                 label: this.i18n.blockOperations.mergeBlocks,
                 click: async () => {
@@ -831,34 +834,29 @@ export default class PluginText extends Plugin {
                     try {
                         const firstBlockId = detail.blockElements[0].dataset.nodeId;
                         const firstBlockOldDom = detail.blockElements[0].outerHTML;
-                        let mergedContent = '';
+                        // Merge editable DOM fragments instead of plain text to keep links/styles.
+                        const editableContents = detail.blockElements
+                            .map(block => block.querySelector('[contenteditable="true"]') as HTMLElement | null)
+                            .filter((el): el is HTMLElement => !!el)
+                            .map(el => el.innerHTML);
 
-                        // First pass: gather content and prepare frontend updates
-                        let allBlocksContent = [];
-                        for (const block of detail.blockElements) {
-                            // Get text content directly from DOM
-                            let blockContent = block.querySelector('[contenteditable="true"]')?.textContent || '';
-                            if (blockContent) {
-                                allBlocksContent.push(blockContent);
-                            }
-                        }
-
-                        // Merge content
-                        mergedContent = allBlocksContent.join('\n');
+                        const mergedContent = editableContents.join('<br>');
 
                         // Frontend update for first block
                         const firstBlock = detail.blockElements[0];
-                        const editableDiv = firstBlock.querySelector('[contenteditable="true"]');
+                        const editableDiv = firstBlock.querySelector('[contenteditable="true"]') as HTMLElement | null;
                         if (editableDiv) {
-                            editableDiv.textContent = mergedContent;
+                            editableDiv.innerHTML = mergedContent;
                         }
+
+                        const newFirstBlockDom = firstBlock.outerHTML;
+                        await updateBlock('dom', newFirstBlockDom, firstBlockId);
 
                         // Remove other blocks from DOM
                         let doOperations: IOperation[] = [];
                         let undoOperations: IOperation[] = [];
 
                         // Store first block update
-                        const newFirstBlockDom = firstBlock.outerHTML;
                         doOperations.push({
                             action: "update",
                             id: firstBlockId,
@@ -904,98 +902,99 @@ export default class PluginText extends Plugin {
             });
         }
 
+        if (!hasListSelection) {
+            menuItems.push({
+                icon: "",
+                label: this.i18n.blockOperations.splitBlocks,
+                click: async () => {
+                    let protyle = detail.protyle;
+                    try {
+                        for (const block of detail.blockElements) {
+                            const blockId = block.dataset.nodeId;
+                            const content = (await getBlockKramdown(blockId)).kramdown;
+                            const oldBlockDom = block.outerHTML;
 
-        menuItems.push({
-            icon: "",
-            label: this.i18n.blockOperations.splitBlocks,
-            click: async () => {
-                let protyle = detail.protyle;
-                try {
-                    for (const block of detail.blockElements) {
-                        const blockId = block.dataset.nodeId;
-                        const content = (await getBlockKramdown(blockId)).kramdown;
-                        const oldBlockDom = block.outerHTML;
-
-                        if (content && content.length > 0) {
-                            // Split content into lines
-                            function cleanText(text) {
-                                return text
-                                    .split('\n')
-                                    .map(line => line.replace(/^[\s]*\{:[^}]*id="[^"]*"[^}]*\}/g, '').trim())
-                                    .filter(line => line)
-                                    .join('\n');
-                            }
-
-                            let contentClean = cleanText(content);
-                            const lines = contentClean.split('\n');
-
-                            if (lines.length > 1) {
-                                let doOperations: IOperation[] = [];
-                                let undoOperations: IOperation[] = [];
-
-                                // Update original block with first line
-                                const firstLine = lines[0];
-                                await updateBlock('markdown', firstLine, blockId);
-                                let lute = window.Lute.New();
-                                let newBlockDom = lute.Md2BlockDOM(firstLine);
-                                newBlockDom = newBlockDom.replace(/data-node-id="[^"]*"/, `data-node-id="${blockId}"`);
-
-                                doOperations.push({
-                                    action: "update",
-                                    id: blockId,
-                                    data: newBlockDom
-                                });
-                                undoOperations.push({
-                                    action: "update",
-                                    id: blockId,
-                                    data: oldBlockDom
-                                });
-
-                                // Insert remaining lines as new blocks
-                                let previousId = blockId;
-                                for (let i = 1; i < lines.length; i++) {
-                                    if (lines[i].trim()) {
-                                        // Generate new block DOM
-                                        let newDom = lute.Md2BlockDOM(lines[i]);
-                                        let newId = newDom.match(/data-node-id="([^"]*)"/)[1];
-
-                                        // Insert the block directly in DOM
-                                        // 🐛Fix(拆分块): 拆分块的时候transaction的insert和inserBlock API会冲突，想到了新方法，可以直接前端更新内容，后端更新慢，就让它后端慢慢更新吧
-                                        const previousElement = protyle.wysiwyg.element.querySelector(`div[data-node-id="${previousId}"]`);
-                                        if (previousElement) {
-                                            const tempDiv = document.createElement('div');
-                                            tempDiv.innerHTML = newDom;
-                                            previousElement.after(tempDiv.firstChild);
-                                        }
-
-                                        // Add to transaction operations
-                                        doOperations.push({
-                                            action: "insert",
-                                            id: newId,
-                                            data: newDom,
-                                            previousID: previousId,
-                                            parentID: protyle.block.id
-                                        });
-                                        undoOperations.push({
-                                            action: "delete",
-                                            id: newId,
-                                            data: null
-                                        });
-
-                                        previousId = newId;
-                                    }
+                            if (content && content.length > 0) {
+                                // Split content into lines
+                                function cleanText(text) {
+                                    return text
+                                        .split('\n')
+                                        .map(line => line.replace(/^[\s]*\{:[^}]*id="[^"]*"[^}]*\}/g, '').trim())
+                                        .filter(line => line)
+                                        .join('\n');
                                 }
 
-                                // Execute transaction after all blocks are inserted
-                                protyle.getInstance().transaction(doOperations, undoOperations);
+                                let contentClean = cleanText(content);
+                                const lines = contentClean.split('\n');
+
+                                if (lines.length > 1) {
+                                    let doOperations: IOperation[] = [];
+                                    let undoOperations: IOperation[] = [];
+
+                                    // Update original block with first line
+                                    const firstLine = lines[0];
+                                    await updateBlock('markdown', firstLine, blockId);
+                                    let lute = window.Lute.New();
+                                    let newBlockDom = lute.Md2BlockDOM(firstLine);
+                                    newBlockDom = newBlockDom.replace(/data-node-id="[^"]*"/, `data-node-id="${blockId}"`);
+
+                                    doOperations.push({
+                                        action: "update",
+                                        id: blockId,
+                                        data: newBlockDom
+                                    });
+                                    undoOperations.push({
+                                        action: "update",
+                                        id: blockId,
+                                        data: oldBlockDom
+                                    });
+
+                                    // Insert remaining lines as new blocks
+                                    let previousId = blockId;
+                                    for (let i = 1; i < lines.length; i++) {
+                                        if (lines[i].trim()) {
+                                            // Generate new block DOM
+                                            let newDom = lute.Md2BlockDOM(lines[i]);
+                                            let newId = newDom.match(/data-node-id="([^"]*)"/)[1];
+
+                                            // Insert the block directly in DOM
+                                            // 🐛Fix(拆分块): 拆分块的时候transaction的insert和inserBlock API会冲突，想到了新方法，可以直接前端更新内容，后端更新慢，就让它后端慢慢更新吧
+                                            const previousElement = protyle.wysiwyg.element.querySelector(`div[data-node-id="${previousId}"]`);
+                                            if (previousElement) {
+                                                const tempDiv = document.createElement('div');
+                                                tempDiv.innerHTML = newDom;
+                                                previousElement.after(tempDiv.firstChild);
+                                            }
+
+                                            // Add to transaction operations
+                                            doOperations.push({
+                                                action: "insert",
+                                                id: newId,
+                                                data: newDom,
+                                                previousID: previousId,
+                                                parentID: protyle.block.id
+                                            });
+                                            undoOperations.push({
+                                                action: "delete",
+                                                id: newId,
+                                                data: null
+                                            });
+
+                                            previousId = newId;
+                                        }
+                                    }
+
+                                    // Execute transaction after all blocks are inserted
+                                    protyle.getInstance().transaction(doOperations, undoOperations);
+                                }
                             }
                         }
+                    } catch (e) {
+                        console.error('Error splitting blocks:', e);
                     }
-                } catch (e) {
-                    console.error('Error splitting blocks:', e);
                 }
-            }
-        });
+            });
+        }
 
 
         menuItems.push({
