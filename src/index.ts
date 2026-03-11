@@ -190,6 +190,42 @@ export default class PluginText extends Plugin {
         return result;
     }
 
+    private removeSuperscriptInRange(range: Range): boolean {
+        if (!range || range.collapsed) return false;
+
+        const fragment = range.cloneContents();
+        let changed = false;
+
+        const supNodes = fragment.querySelectorAll('sup, span[data-type*="sup"]');
+        supNodes.forEach((node) => {
+            // Remove superscript node content entirely.
+            node.remove();
+            changed = true;
+        });
+
+        const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_TEXT);
+        const textNodes: Node[] = [];
+        while (walker.nextNode()) {
+            textNodes.push(walker.currentNode);
+        }
+
+        textNodes.forEach((node) => {
+            const oldValue = node.nodeValue ?? '';
+            // Remove common Unicode superscript characters directly.
+            const newValue = oldValue.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿⁱᵃᵇᶜᵈᵉᶠᵍʰʲᵏˡᵐᵒᵖʳˢᵗᵘᵛʷˣʸᶻ]/g, '');
+            if (newValue !== oldValue) {
+                node.nodeValue = newValue;
+                changed = true;
+            }
+        });
+
+        if (!changed) return false;
+
+        range.deleteContents();
+        range.insertNode(fragment);
+        return true;
+    }
+
     private handleContentMenu(event: CustomEvent<any>) {
         const { menu, range } = event.detail || {};
         if (!menu || !range || range.collapsed) return;
@@ -197,9 +233,7 @@ export default class PluginText extends Plugin {
         const ops = [
             {
                 label: '去除上标',
-                run: (text: string) => text
-                    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (m) => '⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(m).toString())
-                    .replace(/[⁺⁻⁼⁽⁾ⁿ]/g, (m) => ({ '⁺': '+', '⁻': '-', '⁼': '=', '⁽': '(', '⁾': ')', 'ⁿ': 'n' }[m] || m))
+                apply: (targetRange: Range) => this.removeSuperscriptInRange(targetRange)
             },
             {
                 label: '去除空格',
@@ -287,7 +321,7 @@ export default class PluginText extends Plugin {
         const submenu = ops.map((op) => ({
             label: op.label,
             click: () => {
-                const ok = this.transformSelectedText(range, op.run);
+                const ok = op.apply ? op.apply(range) : this.transformSelectedText(range, op.run);
                 showMessage(ok ? `已处理: ${op.label}` : `未修改: ${op.label}`);
             }
         }));
