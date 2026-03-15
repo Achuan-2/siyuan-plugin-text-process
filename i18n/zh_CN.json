@@ -51,7 +51,9 @@
     },
     "messages": {
         "firstLevelCopied": "已复制内容",
-        "multiLevelCopied": "已复制内容"
+        "multiLevelCopied": "已复制内容",
+        "clipboardEmpty": "剪贴板为空",
+        "noHeadingFound": "未发现可调整的标题"
     },
     "settings": {
         "copyFirstLevelSymbol": {
@@ -70,5 +72,7 @@
             "title": "公式自动转换是否都转为行内公式",
             "description": "开启后，所有的公式（包括LaTeX和Markdown）都会转换为行内数学公式"
         }
-    }
+    },
+    "adjustHeading": "调整剪贴板 Markdown 标题级别",
+    "headingLevel": "标题 ${level}"
 }

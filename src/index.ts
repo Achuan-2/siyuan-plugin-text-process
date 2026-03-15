@@ -16,7 +16,8 @@ import {
     openMobileFileById,
     lockScreen,
     ICard,
-    ICardData
+    ICardData,
+    platformUtils
 } from "siyuan";
 
 import { appendBlock, deleteBlock, setBlockAttrs, getBlockAttrs, pushMsg, pushErrMsg, sql, refreshSql, renderSprig, getChildBlocks, insertBlock, renameDocByID, prependBlock, updateBlock, createDocWithMd, getDoc, getBlockKramdown, getBlockDOM, exportPreview } from "./api";
@@ -228,7 +229,45 @@ export default class PluginText extends Plugin {
 
     private handleContentMenu(event: CustomEvent<any>) {
         const { menu, range } = event.detail || {};
-        if (!menu || !range || range.collapsed) return;
+        if (!menu || !range) return;
+
+        if (range.collapsed) {
+            const headingLevels = [1, 2, 3, 4, 5, 6];
+            const submenu = headingLevels.map(level => ({
+                label: (this.i18n as any).headingLevel.replace("${level}", level.toString()),
+                click: async () => {
+                    let text = await platformUtils.readText();
+                    if (typeof text !== 'string') return;
+                    if (!text) {
+                        showMessage((this.i18n as any).messages.clipboardEmpty);
+                        return;
+                    }
+
+                    const adjustedText = this.adjustMarkdownHeadingLevels(text, level);
+                    
+                    // Find current block ID
+                    let node = range.startContainer as Node;
+                    while (node && node.nodeType !== Node.ELEMENT_NODE) {
+                        node = node.parentNode;
+                    }
+                    const currentBlockId = (node as Element)?.closest('[data-node-id]')?.getAttribute('data-node-id');
+
+                    if (currentBlockId) {
+                        await insertBlock("markdown", adjustedText, undefined, currentBlockId);
+                    } else {
+                        platformUtils.writeText(adjustedText);
+                        document.execCommand("paste");
+                    }
+                }
+            }));
+
+            menu.addItem({
+                icon: "iconHeading",
+                label: (this.i18n as any).adjustHeading,
+                submenu
+            });
+            return;
+        }
 
         const ops = [
             {
@@ -421,6 +460,41 @@ export default class PluginText extends Plugin {
             label: '文本处理',
             submenu
         });
+    }
+
+    private adjustMarkdownHeadingLevels(text: string, targetMaxLevel: number): string {
+        const lines = text.split(/\r?\n/);
+
+        // Find current max level (minimum number of #)
+        let currentMaxLevel = Infinity;
+        const headingRegex = /^(#+)\s/;
+
+        for (const line of lines) {
+            const match = line.match(headingRegex);
+            if (match) {
+                const level = match[1].length;
+                if (level < currentMaxLevel) {
+                    currentMaxLevel = level;
+                }
+            }
+        }
+
+        if (currentMaxLevel === Infinity) {
+            return text;
+        }
+
+        const diff = targetMaxLevel - currentMaxLevel;
+        if (diff === 0) return text;
+
+        return lines.map(line => {
+            const match = line.match(headingRegex);
+            if (match) {
+                const level = match[1].length;
+                const newLevel = Math.max(1, Math.min(6, level + diff));
+                return '#'.repeat(newLevel) + ' ' + line.substring(match[0].length);
+            }
+            return line;
+        }).join('\n');
     }
 
     private eventBusPaste(event: any) {

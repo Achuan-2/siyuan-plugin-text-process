@@ -51,7 +51,9 @@
     },
     "messages": {
         "firstLevelCopied": "First level items copied to clipboard",
-        "multiLevelCopied": "Multi level items copied to clipboard"
+        "multiLevelCopied": "Multi level items copied to clipboard",
+        "clipboardEmpty": "Clipboard is empty",
+        "noHeadingFound": "No headings found to adjust"
     },
     "settings": {
         "copyFirstLevelSymbol": {
@@ -70,5 +72,7 @@
             "title": "Convert to Inline Math",
             "description": "When enabled, all math formulas (both LaTeX and Markdown) will be converted to inline format"
         }
-    }
+    },
+    "adjustHeading": "Adjust Clipboard Markdown Heading Level",
+    "headingLevel": "Heading ${level}"
 }
