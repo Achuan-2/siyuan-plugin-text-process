@@ -11,12 +11,12 @@
 比如从维基百科复制到文字总是有很多链接和上标
 ……
 
+## 📝更新日志
+
+见: [CHANGELOG.md](https://cdn.jsdelivr.net/gh/Achuan-2/siyuan-plugin-text-process@main/CHANGELOG.md
+)
+
 ## ✨插件功能
-
-插件主要有两个功能
-
-* 粘贴时自动处理
-* 对块进行处理
 
 ### 粘贴时自动处理
 
@@ -71,6 +71,15 @@
 * 批量设置代码语言
 * 批量设置图片宽度
 
+## 选中部分文本右键进行处理
+
+![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/PixPin_2026-03-15_23-14-25-2026-03-15.png)
+
+## 右键粘贴时直接进行处理
+
+- 对Markdown最大标题进行调整
+
+![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/PixPin_2026-03-15_23-13-45-2026-03-15.png)
 
 ## ❤️ 用爱发电
 
@@ -81,5 +90,3 @@
 累积赞赏50元的朋友如果想加我微信，可以发邮件到achuan-2@outlook.com来进行好友申请（赞赏达不到50元的，我不会回复邮件和加好友哦，因为不想当免费客服）
 
 ![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/20241118182532-2024-11-18.png)
-
-捐赠者列表见：https://www.yuque.com/achuan-2
