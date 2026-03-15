@@ -75,7 +75,7 @@
 
 ![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/PixPin_2026-03-15_23-14-25-2026-03-15.png)
 
-## 右键粘贴时直接进行处理
+## 右键处理文本后再粘贴
 
 - 对Markdown最大标题进行调整
 
