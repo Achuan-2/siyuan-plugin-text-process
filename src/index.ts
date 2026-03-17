@@ -567,8 +567,26 @@ export default class PluginText extends Plugin {
         let lastHtml = html;
         let lastSiyuan = siyuan;
 
-        const checkChange = (label: string) => {
-            if (text !== lastText || html !== lastHtml || siyuan !== lastSiyuan) {
+        const checkChange = (label: string, type?: "text" | "html" | "siyuan" | ("text" | "html" | "siyuan")[]) => {
+            let changed = false;
+            if (Array.isArray(type)) {
+                changed = type.some(item => {
+                    if (item === "text") return text !== lastText;
+                    if (item === "html") return html !== lastHtml;
+                    if (item === "siyuan") return siyuan !== lastSiyuan;
+                    return false;
+                });
+            } else if (type === "text") {
+                changed = text !== lastText;
+            } else if (type === "html") {
+                changed = html !== lastHtml;
+            } else if (type === "siyuan") {
+                changed = siyuan !== lastSiyuan;
+            } else {
+                changed = text !== lastText || html !== lastHtml || siyuan !== lastSiyuan;
+            }
+
+            if (changed) {
                 processedOps.push(label);
                 lastText = text;
                 lastHtml = html;
@@ -577,7 +595,7 @@ export default class PluginText extends Plugin {
         };
 
         // console.log(event.detail);
-        if (this.data[STORAGE_NAME].LaTeXConversion) {
+        if (this.data[STORAGE_NAME].LaTeXConversion && !siyuan) {
             if (this.data[STORAGE_NAME].inlineLatex) { // Change from this.settingUtils.get("inlineLatex")
                 // Convert block math to inline math and remove newlines
                 text = text.replace(/\\\[(.*?)\\\]/gs, (_, p1) => `$${p1.replace(/\n/g, '')}$`); // LaTeX block to inline
@@ -589,17 +607,17 @@ export default class PluginText extends Plugin {
                 text = text.replace(/\\\[(.*?)\\\]/gs, '\n$$$$$1$$$$\n'); // LaTeX block math
                 text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
             }
-            checkChange((this.i18n.pasteOptions as any).LaTeXConversion);
+            checkChange((this.i18n.pasteOptions as any).LaTeXConversion, "text");
         }
-        if (this.data[STORAGE_NAME].removeNewlines) {
+        if (this.data[STORAGE_NAME].removeNewlines && !siyuan) {
             text = text.replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, ''); // 去除换行，如果换行后是英文单词开头则加空格
             // html 把br和\n替换为空字符
             html = html.replace(/<br>/g, ''); // 去除换行
             // html 把p标签的内容都合并为一个
             html = html.replace(/<\/p><p[^>]*>/g, ''); // 合并p标签内容
-            checkChange((this.i18n.pasteOptions as any).removeNewlines);
+            checkChange((this.i18n.pasteOptions as any).removeNewlines, ["text", "html"]);
         }
-        if (this.data[STORAGE_NAME].removeSpaces) {
+        if (this.data[STORAGE_NAME].removeSpaces && !siyuan) {
             // Skip block reference patterns ((id 'text')), asset references <<assets/xxx "xxxx">>, 
             // and other special patterns
             if (text.match(/\(\([0-9]{14}-[a-zA-Z0-9]{7}\s+'[^']+'\)\)/) ||
@@ -611,35 +629,35 @@ export default class PluginText extends Plugin {
                 text = text.replace(/[^\S\n]/g, ''); // Removes all whitespace except newlines
             }
             // html = html.replace(/\s/g, ''); // 去除空格
-            checkChange((this.i18n.pasteOptions as any).removeSpaces);
+            checkChange((this.i18n.pasteOptions as any).removeSpaces, "text");
         }
-        if (this.data[STORAGE_NAME].removeEmptyLines) {
+        if (this.data[STORAGE_NAME].removeEmptyLines && !siyuan) {
             text = text.replace(/^\s*[\r\n]/gm, ''); // 去除空行
             html = html.replace(/<\/p><p[^>]*>/g, '</br>'); // 合并p标签内容
-            checkChange((this.i18n.pasteOptions as any).removeEmptyLines);
+            checkChange((this.i18n.pasteOptions as any).removeEmptyLines, ["text", "html"]);
         }
-        if (this.data[STORAGE_NAME].addEmptyLines) {
+        if (this.data[STORAGE_NAME].addEmptyLines && !siyuan) {
             text = text.replace(/([^\n])\n([^\n])/g, '$1\n\n$2'); // 添加空行，只匹配只有一个换行的
             html = html.replace(/(<br>)(?!<br>)/g, '$1<br>'); // 添加空行，只匹配只有一个<br>的
-            checkChange((this.i18n.pasteOptions as any).addEmptyLines);
+            checkChange((this.i18n.pasteOptions as any).addEmptyLines, ["text", "html"]);
         }
-        if (this.data[STORAGE_NAME].pptList) {
+        if (this.data[STORAGE_NAME].pptList && !siyuan) {
             // text = text.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             // html = html.replace(/(^|\n)[✨✅⭐️💡⚡️•○▪▫◆◇►▻❖✦✴✿❀⚪■☐🔲][\s]*/g, '$1- ');// 富文本列表符号转markdown列表
             // 替换<span style='mso-special-format:bullet;font-family:Wingdings'>l</span>为-
             // console.log(html);
             html = convertOfficeListToHtml(html);
-            checkChange((this.i18n.pasteOptions as any).convertList);
+            checkChange((this.i18n.pasteOptions as any).convertList, "html");
         }
-        if (this.data[STORAGE_NAME].removeSuperscript) {
+        if (this.data[STORAGE_NAME].removeSuperscript && !siyuan) {
             // text = text.replace(/\^([^\s^]+)(?=\s|$)/g, ''); // Remove superscript markers
             html = html.replace(/<sup[^>]*>.*?<\/sup>/g, ''); // Remove HTML superscript tags with any attributes
-            checkChange((this.i18n.pasteOptions as any).removeSuperscript);
+            checkChange((this.i18n.pasteOptions as any).removeSuperscript, "html");
         }
-        if (this.data[STORAGE_NAME].removeLinks) {
+        if (this.data[STORAGE_NAME].removeLinks && !siyuan) {
             text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1'); // Remove markdown links
             html = html.replace(/<a[^>]*>(.*?)<\/a>/g, '$1'); // Remove HTML links
-            checkChange((this.i18n.pasteOptions as any).removeLinks);
+            checkChange((this.i18n.pasteOptions as any).removeLinks, ["text", "html"]);
         }
         if (this.data[STORAGE_NAME].autoLink) {
             const urlRegex = /(?<![\[\(])(https?:\/\/[^\s\u4e00-\u9fa5<">]+)(?![\]\)])/g;
@@ -649,7 +667,7 @@ export default class PluginText extends Plugin {
             const replaceWithSpan = (match: string, url: string) => url ? `<span data-type="a" data-href="${url}">${url}</span>` : match;
             siyuan = siyuan.replace(htmlUrlRegex, replaceWithSpan);
             html = html.replace(htmlUrlRegex, replaceWithSpan);
-            checkChange((this.i18n.pasteOptions as any).autoLink);
+            checkChange((this.i18n.pasteOptions as any).autoLink, ["text", "html", "siyuan"]);
         }
 
         if (this.data[STORAGE_NAME].fullWidthToHalfWidth) {
@@ -675,7 +693,7 @@ export default class PluginText extends Plugin {
             text = toHalfWidth(text);
             html = toHalfWidth(html);
             siyuan = toHalfWidth(siyuan);
-            checkChange((this.i18n.pasteOptions as any).fullWidthToHalfWidth);
+            checkChange((this.i18n.pasteOptions as any).fullWidthToHalfWidth, ["text", "html", "siyuan"]);
         }
 
         // Word颜色处理：如果没启用保留颜色，则移除所有颜色样式
@@ -909,7 +927,7 @@ export default class PluginText extends Plugin {
                 // html = null;
 
             }
-            checkChange((this.i18n.pasteOptions as any).preserveColors);
+            checkChange((this.i18n.pasteOptions as any).preserveColors, "siyuan");
         }
 
         event.detail.resolve({
