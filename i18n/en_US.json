@@ -10,6 +10,7 @@
         "convertWordFormula": "Convert Word Formula to Markdown",
         "removeSuperscript": "Remove Superscript",
         "removeLinks": "Remove Links Keep Text",
+        "autoLink": "Auto Link Recognition",
         "preserveColors": "Preserve HTML Colors",
         "fullWidthToHalfWidth": "Full-width to Half-width"
     },

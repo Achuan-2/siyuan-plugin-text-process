@@ -51,6 +51,7 @@ export default class PluginText extends Plugin {
             pptList: false,
             removeSuperscript: false,  // Add new option
             removeLinks: false, // Add new option
+            autoLink: false, // Add new option
             inlineLatex: false,  // Add inlineLatex here
             preserveColors: false, // 添加保留Word颜色选项
             fullWidthToHalfWidth: false // 添加全角转半角选项
@@ -584,6 +585,14 @@ export default class PluginText extends Plugin {
             html = html.replace(/<a[^>]*>(.*?)<\/a>/g, '$1'); // Remove HTML links
             checkChange((this.i18n.pasteOptions as any).removeLinks);
         }
+        if (this.data[STORAGE_NAME].autoLink) {
+            // Recognize URLs and convert them to markdown links if they are plain text
+            // Avoid already recognized links or other markdown patterns
+            const urlRegex = /(?<![\[\(])(https?:\/\/[^\s\u4e00-\u9fa5]+)(?![\]\)])/g;
+            text = text.replace(urlRegex, '[$1]($1)');
+            siyuan = siyuan.replace(urlRegex, '[$1]($1)');
+            checkChange((this.i18n.pasteOptions as any).autoLink);
+        }
 
         if (this.data[STORAGE_NAME].fullWidthToHalfWidth) {
             // Convert full-width characters to half-width
@@ -899,6 +908,13 @@ export default class PluginText extends Plugin {
             label: this.i18n.pasteOptions.removeLinks,
             click: (detail, event) => {
                 this.toggleOption("removeLinks", detail);
+            }
+        });
+        menu.addItem({
+            icon: this.data[STORAGE_NAME].autoLink ? "iconSelect" : "iconClose",
+            label: (this.i18n.pasteOptions as any).autoLink,
+            click: (detail) => {
+                this.toggleOption("autoLink", detail);
             }
         });
         menu.addItem({
