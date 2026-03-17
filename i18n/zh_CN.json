@@ -23,6 +23,7 @@
         "convertToMarkdownList": "列表符号转markdown列表",
         "removeSuperscript": "去除上标",
         "removeLinks": "链接转文字",
+        "autoLink": "链接自动识别",
         "removeSpaces": "去除空格",
         "removeNewlines": "去除换行",
         "convertChineseToEnglish": "中文符号转英文符号",

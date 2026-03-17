@@ -355,6 +355,20 @@ export default class PluginText extends Plugin {
             {
                 label: '半角转全角',
                 run: (text: string) => this.convertHalfWidthText(text)
+            },
+            {
+                label: (this.i18n.blockOperations as any).autoLink,
+                apply: (range: Range) => {
+                    const text = range.toString();
+                    const urlRegex = /(?<![\[\(])(https?:\/\/[^\s\u4e00-\u9fa5<">]+)(?![\]\)])/g;
+                    if (!urlRegex.test(text)) return false;
+
+                    const html = text.replace(urlRegex, '<span data-type="a" data-href="$1">$1</span>');
+                    const fragment = document.createRange().createContextualFragment(html);
+                    range.deleteContents();
+                    range.insertNode(fragment);
+                    return true;
+                }
             }
         ];
 
@@ -586,11 +600,13 @@ export default class PluginText extends Plugin {
             checkChange((this.i18n.pasteOptions as any).removeLinks);
         }
         if (this.data[STORAGE_NAME].autoLink) {
-            // Recognize URLs and convert them to markdown links if they are plain text
-            // Avoid already recognized links or other markdown patterns
-            const urlRegex = /(?<![\[\(])(https?:\/\/[^\s\u4e00-\u9fa5]+)(?![\]\)])/g;
+            const urlRegex = /(?<![\[\(])(https?:\/\/[^\s\u4e00-\u9fa5<">]+)(?![\]\)])/g;
             text = text.replace(urlRegex, '[$1]($1)');
-            siyuan = siyuan.replace(urlRegex, '[$1]($1)');
+            
+            const htmlUrlRegex = /<[^>]+>|(?<![\[\(])(https?:\/\/[^\s\u4e00-\u9fa5<">]+)(?![\]\)])/g;
+            const replaceWithSpan = (match: string, url: string) => url ? `<span data-type="a" data-href="${url}">${url}</span>` : match;
+            siyuan = siyuan.replace(htmlUrlRegex, replaceWithSpan);
+            html = html.replace(htmlUrlRegex, replaceWithSpan);
             checkChange((this.i18n.pasteOptions as any).autoLink);
         }
 
@@ -1448,6 +1464,31 @@ export default class PluginText extends Plugin {
                     }
                 } catch (e) {
                     console.error('Error removing links:', e);
+                }
+            }
+        });
+        menuItems.push({
+            label: (this.i18n.blockOperations as any).autoLink,
+            click: async () => {
+                let protyle = detail.protyle;
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const blockHTML = block.outerHTML;
+                        if (blockHTML) {
+                            const urlRegex = /<[^>]+>|(?<![\[\(])(https?:\/\/[^\s\u4e00-\u9fa5<">]+)(?![\]\)])/g;
+                            const updatedContent = blockHTML.replace(urlRegex, (match, url) => {
+                                if (url) return `<span data-type="a" data-href="${url}">${url}</span>`;
+                                return match;
+                            });
+                            if (updatedContent !== blockHTML) {
+                                await updateBlock('dom', updatedContent, blockId);
+                                protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error auto linking:', e);
                 }
             }
         });
