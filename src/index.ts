@@ -270,7 +270,7 @@ export default class PluginText extends Plugin {
             }));
 
             menu.addItem({
-                icon: "iconHeading",
+                icon: "#iconH2",
                 label: (this.i18n as any).adjustHeading,
                 submenu
             });
