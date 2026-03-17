@@ -160,6 +160,13 @@ export default class PluginText extends Plugin {
         return true;
     }
 
+    private saveViaTransaction(protyleElem: HTMLElement) {
+        if (!protyleElem) return;
+        let e = document.createEvent('HTMLEvents');
+        e.initEvent('input', true, false);
+        protyleElem.dispatchEvent(e);
+    }
+
     private convertHalfWidthText(text: string): string {
         function toFullWidthChar(ch: string) {
             if (ch === ' ') return '\u3000';
@@ -229,7 +236,7 @@ export default class PluginText extends Plugin {
     }
 
     private handleContentMenu(event: CustomEvent<any>) {
-        const { menu, range } = event.detail || {};
+        const { menu, range, protyle } = event.detail || {};
         if (!menu || !range) return;
 
         if (range.collapsed) {
@@ -266,6 +273,38 @@ export default class PluginText extends Plugin {
                 icon: "iconHeading",
                 label: (this.i18n as any).adjustHeading,
                 submenu
+            });
+
+            menu.addItem({
+                icon: "iconLink",
+                label: (this.i18n.blockOperations as any).autoLink,
+                click: async () => {
+                    let text = await platformUtils.readText();
+                    if (typeof text !== 'string' || !text) {
+                        showMessage((this.i18n as any).messages.clipboardEmpty);
+                        return;
+                    }
+
+                    const urlRegex = /(?<![\[\(])(https?:\/\/[^\s\u4e00-\u9fa5<">]+)(?![\]\)])/g;
+                    if (!urlRegex.test(text)) {
+                        // If no links found, just insert as plain text or ignore?
+                        // User likely wants it to be processed.
+                        // For consistency with other features, we insert if changed.
+                    }
+
+                    const html = text.replace(urlRegex, '<span data-type="a" data-href="$1">$1</span>');
+                    if (html === text) {
+                        // Optionally show message if no links detected?
+                        // But let's follow the standard pattern.
+                    }
+
+                    const fragment = document.createRange().createContextualFragment(html);
+                    range.insertNode(fragment);
+                    
+                    if (protyle?.wysiwyg?.element) {
+                        this.saveViaTransaction(protyle.wysiwyg.element);
+                    }
+                }
             });
             return;
         }
@@ -376,6 +415,9 @@ export default class PluginText extends Plugin {
             label: op.label,
             click: () => {
                 const ok = op.apply ? op.apply(range) : this.transformSelectedText(range, op.run);
+                if (ok && protyle?.wysiwyg?.element) {
+                    this.saveViaTransaction(protyle.wysiwyg.element);
+                }
                 showMessage(ok ? `已处理: ${op.label}` : `未修改: ${op.label}`);
             }
         }));
