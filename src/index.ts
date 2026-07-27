@@ -26,6 +26,7 @@ import "@/index.scss";
 
 import { SettingUtils } from "./libs/setting-utils";
 import { convertOfficeListToHtml } from "./utils/list-converter";
+import { convertLatexMath, forceMarkdownPasteHTML } from "./utils/latex-converter";
 
 const STORAGE_NAME = "config";
 const SETTINGS_NAME = "settings";
@@ -596,18 +597,16 @@ export default class PluginText extends Plugin {
 
         // console.log(event.detail);
         if (this.data[STORAGE_NAME].LaTeXConversion && !siyuan) {
-            if (this.data[STORAGE_NAME].inlineLatex) { // Change from this.settingUtils.get("inlineLatex")
-                // Convert block math to inline math and remove newlines
-                text = text.replace(/\\\[(.*?)\\\]/gs, (_, p1) => `$${p1.replace(/\n/g, '')}$`); // LaTeX block to inline
-                text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
-                // markdown数学公式块也要变为inline
-                text = text.replace(/\$\$(.*?)\$\$/gs, (_, p1) => `$${p1.replace(/\n/g, '')}$`); // Markdown block to inline
-
-            } else {
-                text = text.replace(/\\\[(.*?)\\\]/gs, '\n$$$$$1$$$$\n'); // LaTeX block math
-                text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$'); // LaTeX 行内数学公式
+            const originalText = text;
+            text = convertLatexMath(text, {
+                inlineAll: this.data[STORAGE_NAME].inlineLatex,
+            });
+            if (text !== originalText) {
+                // SiYuan otherwise prefers the unmodified rich HTML clipboard
+                // payload and silently discards the converted plain Markdown.
+                html = forceMarkdownPasteHTML(text);
             }
-            checkChange((this.i18n.pasteOptions as any).LaTeXConversion, "text");
+            checkChange((this.i18n.pasteOptions as any).LaTeXConversion, ["text", "html"]);
         }
         if (this.data[STORAGE_NAME].removeNewlines && !siyuan) {
             text = text.replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, ''); // 去除换行，如果换行后是英文单词开头则加空格
