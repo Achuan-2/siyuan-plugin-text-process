@@ -75,6 +75,8 @@
             "description": "When enabled, all math formulas (both LaTeX and Markdown) will be converted to inline format"
         }
     },
+    "pasteAndRemoveNewlines": "Paste and Remove Newlines",
+    "pasteAndRemoveSpaces": "Paste and Remove Spaces",
     "adjustHeading": "Adjust Clipboard Markdown Heading Level",
     "headingLevel": "Heading ${level}"
 }

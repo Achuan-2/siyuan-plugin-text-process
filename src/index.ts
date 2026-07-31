@@ -307,6 +307,44 @@ export default class PluginText extends Plugin {
                     }
                 }
             });
+
+            menu.addItem({
+                icon: "iconPaste",
+                label: (this.i18n as any).pasteAndRemoveNewlines,
+                click: async () => {
+                    let text = await platformUtils.readText();
+                    if (typeof text !== 'string' || !text) {
+                        showMessage((this.i18n as any).messages.clipboardEmpty);
+                        return;
+                    }
+
+                    text = text.replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, '');
+                    range.insertNode(document.createTextNode(text));
+
+                    if (protyle?.wysiwyg?.element) {
+                        this.saveViaTransaction(protyle.wysiwyg.element);
+                    }
+                }
+            });
+
+            menu.addItem({
+                icon: "iconPaste",
+                label: (this.i18n as any).pasteAndRemoveSpaces,
+                click: async () => {
+                    let text = await platformUtils.readText();
+                    if (typeof text !== 'string' || !text) {
+                        showMessage((this.i18n as any).messages.clipboardEmpty);
+                        return;
+                    }
+
+                    text = text.replace(/[^\S\n]/g, '');
+                    range.insertNode(document.createTextNode(text));
+
+                    if (protyle?.wysiwyg?.element) {
+                        this.saveViaTransaction(protyle.wysiwyg.element);
+                    }
+                }
+            });
             return;
         }
 

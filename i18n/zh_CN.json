@@ -75,6 +75,8 @@
             "description": "开启后，所有的公式（包括LaTeX和Markdown）都会转换为行内数学公式"
         }
     },
+    "pasteAndRemoveNewlines": "粘贴去除换行",
+    "pasteAndRemoveSpaces": "粘贴去除空格",
     "adjustHeading": "调整剪贴板 Markdown 标题级别",
     "headingLevel": "标题 ${level}"
 }
