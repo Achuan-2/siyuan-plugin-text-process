@@ -594,12 +594,22 @@ export default class PluginText extends Plugin {
     }
 
     private eventBusPaste(event: any) {
-        // 如果需异步处理请调用 preventDefault， 否则会进行默认处理
-        event.preventDefault();
-        // 如果使用了 preventDefault，必须调用 resolve，否则程序会卡死
         let text = event.detail.textPlain;
         let html = event.detail.textHTML;
         let siyuan = event.detail.siyuanHTML;
+        const files = event.detail.files;
+
+        // 剪贴板只有文件（如截图、复制的文件）且没有文本内容时，交给思源默认处理。
+        // 自 siyuan-note/siyuan@5a9761f 起，插件 resolve 的返回值被当作完整剪贴板载荷，
+        // 未返回的字段（如 files）会被清空，导致截图无法粘贴。
+        const hasFiles = !!files && files.length > 0;
+        if (hasFiles && !text && !html && !siyuan) {
+            return;
+        }
+
+        // 如果需异步处理请调用 preventDefault， 否则会进行默认处理
+        event.preventDefault();
+        // 如果使用了 preventDefault，必须调用 resolve，否则程序会卡死
 
         const processedOps: string[] = [];
         let lastText = text;
@@ -970,7 +980,9 @@ export default class PluginText extends Plugin {
         event.detail.resolve({
             textPlain: text,
             textHTML: html,
-            siyuanHTML: siyuan
+            siyuanHTML: siyuan,
+            // 思源将返回值当作完整剪贴板载荷，必须回传 files，否则文件/图片会被清空
+            files: files ?? []
         });
 
         if (processedOps.length > 0) {
