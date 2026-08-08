@@ -1,3 +1,6 @@
+## v0.6.3 / 20260808
+- 🎨 适配思源v3.8.0
+
 ## v0.6.1 / 20260731
 
 - fix: preserve LaTeX conversion for rich text paste ([#33](https://github.com/Achuan-2/siyuan-plugin-text-process/issues/33)) 修复粘贴富文本时 LaTeX 转换结果被富文本剪贴板内容覆盖的问题，感谢@[TheWeedy](https://github.com/TheWeedy)贡献
