@@ -781,7 +781,9 @@ export default class PluginText extends Plugin {
         const preserveRichTextColors = isOfficeRichText
             ? this.data[STORAGE_NAME].preserveOfficeColors
             : this.data[STORAGE_NAME].preserveOtherColors;
-        if (preserveRichTextColors) {
+        // 思源内部复制（含行内样式）自带 siyuanHTML，交给思源原样粘贴，
+        // 不走外部富文本的颜色保留流程，否则行内颜色 span 会被错误改写成链接。
+        if (preserveRichTextColors && !siyuan) {
 
             // 如果html包含id="20250313235736-ywdz6cn" （时间+随机字母），updated="20250313235747"（14位数字），则不继续替换下面内容
             if (!html.match(/id="\d{14}-[a-z0-9]{7}" updated="\d{14}"/)) {
