@@ -26,7 +26,7 @@ import "@/index.scss";
 
 import { SettingUtils } from "./libs/setting-utils";
 import { convertOfficeListToHtml } from "./utils/list-converter";
-import { convertLatexMath, forceMarkdownPasteHTML } from "./utils/latex-converter";
+import { convertLatexMath } from "./utils/latex-converter";
 
 const STORAGE_NAME = "config";
 const SETTINGS_NAME = "settings";
@@ -650,9 +650,10 @@ export default class PluginText extends Plugin {
                 inlineAll: this.data[STORAGE_NAME].inlineLatex,
             });
             if (text !== originalText) {
-                // SiYuan otherwise prefers the unmodified rich HTML clipboard
-                // payload and silently discards the converted plain Markdown.
-                html = forceMarkdownPasteHTML(text);
+                // 丢弃原剪贴板中的富文本，让思源走纯 Markdown 粘贴分支。
+                // 使用 <pre> 强制解析会被思源识别为代码粘贴，该分支不会立即渲染公式，
+                // 因而公式只能在刷新文档后显示。
+                html = "";
             }
             checkChange((this.i18n.pasteOptions as any).LaTeXConversion, ["text", "html"]);
         }
