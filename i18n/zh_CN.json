@@ -79,5 +79,6 @@
     "pasteAndRemoveNewlines": "粘贴去除换行",
     "pasteAndRemoveSpaces": "粘贴去除空格",
     "adjustHeading": "调整剪贴板 Markdown 标题级别",
+    "headingNone": "无标题（转为加粗）",
     "headingLevel": "标题 ${level}"
 }

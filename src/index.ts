@@ -251,33 +251,42 @@ export default class PluginText extends Plugin {
 
         if (range.collapsed) {
             const headingLevels = [1, 2, 3, 4, 5, 6];
-            const submenu = headingLevels.map(level => ({
+            const insertAdjustedClipboard = async (transform: (text: string) => string) => {
+                const text = await platformUtils.readText();
+                if (typeof text !== 'string') return;
+                if (!text) {
+                    showMessage((this.i18n as any).messages.clipboardEmpty);
+                    return;
+                }
+
+                const adjustedText = transform(text);
+
+                // Find current block ID
+                let node = range.startContainer as Node;
+                while (node && node.nodeType !== Node.ELEMENT_NODE) {
+                    node = node.parentNode;
+                }
+                const currentBlockId = (node as Element)?.closest('[data-node-id]')?.getAttribute('data-node-id');
+
+                if (currentBlockId) {
+                    await insertBlock("markdown", adjustedText, undefined, currentBlockId);
+                } else {
+                    await platformUtils.writeText(adjustedText);
+                    document.execCommand("paste");
+                }
+            };
+
+            const submenu = [{
+                label: (this.i18n as any).headingNone,
+                click: async () => {
+                    await insertAdjustedClipboard(text => this.convertMarkdownHeadingsToBold(text));
+                }
+            }, ...headingLevels.map(level => ({
                 label: (this.i18n as any).headingLevel.replace("${level}", level.toString()),
                 click: async () => {
-                    let text = await platformUtils.readText();
-                    if (typeof text !== 'string') return;
-                    if (!text) {
-                        showMessage((this.i18n as any).messages.clipboardEmpty);
-                        return;
-                    }
-
-                    const adjustedText = this.adjustMarkdownHeadingLevels(text, level);
-                    
-                    // Find current block ID
-                    let node = range.startContainer as Node;
-                    while (node && node.nodeType !== Node.ELEMENT_NODE) {
-                        node = node.parentNode;
-                    }
-                    const currentBlockId = (node as Element)?.closest('[data-node-id]')?.getAttribute('data-node-id');
-
-                    if (currentBlockId) {
-                        await insertBlock("markdown", adjustedText, undefined, currentBlockId);
-                    } else {
-                        platformUtils.writeText(adjustedText);
-                        document.execCommand("paste");
-                    }
+                    await insertAdjustedClipboard(text => this.adjustMarkdownHeadingLevels(text, level));
                 }
-            }));
+            }))];
 
             menu.addItem({
                 icon: "#iconH2",
@@ -599,6 +608,20 @@ export default class PluginText extends Plugin {
                 return '#'.repeat(newLevel) + ' ' + line.substring(match[0].length);
             }
             return line;
+        }).join('\n');
+    }
+
+    private convertMarkdownHeadingsToBold(text: string): string {
+        return text.split(/\r?\n/).map(line => {
+            const match = line.match(/^#{1,6}[\t ]+(.+)$/);
+            if (!match) return line;
+
+            // Markdown 闭合式标题末尾的 # 只有在前面存在空格时才是标记，避免破坏 “C#”。
+            const headingText = match[1].replace(/[\t ]+#+[\t ]*$/, '').trim();
+            if (/^(?:\*\*[^\n]+\*\*|__[^\n]+__)$/.test(headingText)) {
+                return headingText;
+            }
+            return `**${headingText}**`;
         }).join('\n');
     }
 

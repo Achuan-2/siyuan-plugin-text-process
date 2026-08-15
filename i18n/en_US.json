@@ -79,5 +79,6 @@
     "pasteAndRemoveNewlines": "Paste and Remove Newlines",
     "pasteAndRemoveSpaces": "Paste and Remove Spaces",
     "adjustHeading": "Adjust Clipboard Markdown Heading Level",
+    "headingNone": "No Heading (Convert to Bold)",
     "headingLevel": "Heading ${level}"
 }
