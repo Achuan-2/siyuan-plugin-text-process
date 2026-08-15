@@ -11,7 +11,8 @@
         "removeSuperscript": "去除上标",
         "removeLinks": "链接转文字",
         "autoLink": "链接自动识别",
-        "preserveColors": "保留富文本颜色",
+        "preserveOfficeColors": "保留 Office 富文本颜色",
+        "preserveOtherColors": "保留其他来源富文本颜色",
         "fullWidthToHalfWidth": "全角转半角"
     },
     "blockOperations": {

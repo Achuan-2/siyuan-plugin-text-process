@@ -11,7 +11,8 @@
         "removeSuperscript": "Remove Superscript",
         "removeLinks": "Remove Links Keep Text",
         "autoLink": "Auto Link Recognition",
-        "preserveColors": "Preserve HTML Colors",
+        "preserveOfficeColors": "Preserve Office Rich Text Colors",
+        "preserveOtherColors": "Preserve Other Rich Text Colors",
         "fullWidthToHalfWidth": "Full-width to Half-width"
     },
     "blockOperations": {

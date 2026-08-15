@@ -54,10 +54,19 @@ export default class PluginText extends Plugin {
             removeLinks: false, // Add new option
             autoLink: false, // Add new option
             inlineLatex: false,  // Add inlineLatex here
-            preserveColors: false, // 添加保留Word颜色选项
+            preserveOfficeColors: false, // 保留 Office 来源富文本颜色
+            preserveOtherColors: false, // 保留其他来源富文本颜色
             fullWidthToHalfWidth: false // 添加全角转半角选项
         }
         await this.loadData(STORAGE_NAME);
+        // 兼容旧版单一“保留富文本颜色”配置：旧选项开启时，升级后两个来源都继续保留颜色。
+        const pasteConfig = this.data[STORAGE_NAME];
+        if (typeof pasteConfig.preserveOfficeColors !== "boolean") {
+            pasteConfig.preserveOfficeColors = pasteConfig.preserveColors ?? false;
+        }
+        if (typeof pasteConfig.preserveOtherColors !== "boolean") {
+            pasteConfig.preserveOtherColors = pasteConfig.preserveColors ?? false;
+        }
         // console.log(this.data[STORAGE_NAME]);
 
         this.settingUtils = new SettingUtils({
@@ -744,13 +753,70 @@ export default class PluginText extends Plugin {
             checkChange((this.i18n.pasteOptions as any).fullWidthToHalfWidth, ["text", "html", "siyuan"]);
         }
 
-        // Word颜色处理：如果没启用保留颜色，则移除所有颜色样式
-        if (this.data[STORAGE_NAME].preserveColors) {
+        // Office 和其他来源的富文本颜色可分别控制。
+        const isOfficeRichText = /(?:mso-|urn:schemas-microsoft-com:office|<o:p\b|xmlns:o\s*=|Microsoft\s+(?:Word|Excel|PowerPoint))/i.test(html);
+        const preserveRichTextColors = isOfficeRichText
+            ? this.data[STORAGE_NAME].preserveOfficeColors
+            : this.data[STORAGE_NAME].preserveOtherColors;
+        if (preserveRichTextColors) {
 
             // 如果html包含id="20250313235736-ywdz6cn" （时间+随机字母），updated="20250313235747"（14位数字），则不继续替换下面内容
             if (!html.match(/id="\d{14}-[a-z0-9]{7}" updated="\d{14}"/)) {
-                // 添加一个功能，<span style="color:xx">xxx</span>的文本替换为<span data-type='text style="color:xx">xxx</span>
-                // First convert color spans to links
+                // 非 Office 网页复制时，浏览器经常把页面容器的灰色/白色背景作为计算样式
+                // 写入整个选区。它不是用户主动设置的高亮，不应进入思源文本样式。
+                function isNeutralBackgroundColor(value: string): boolean {
+                    const normalized = value.trim().toLowerCase();
+                    if (['transparent', 'white', 'black', 'whitesmoke', 'snow', 'gray', 'grey'].includes(normalized)) {
+                        return true;
+                    }
+
+                    let red: number;
+                    let green: number;
+                    let blue: number;
+                    let alpha = 1;
+
+                    const hexMatch = normalized.match(/^#([0-9a-f]{3,8})$/i);
+                    if (hexMatch) {
+                        const hex = hexMatch[1];
+                        if (hex.length === 3 || hex.length === 4) {
+                            red = parseInt(hex[0] + hex[0], 16);
+                            green = parseInt(hex[1] + hex[1], 16);
+                            blue = parseInt(hex[2] + hex[2], 16);
+                            if (hex.length === 4) alpha = parseInt(hex[3] + hex[3], 16) / 255;
+                        } else if (hex.length === 6 || hex.length === 8) {
+                            red = parseInt(hex.slice(0, 2), 16);
+                            green = parseInt(hex.slice(2, 4), 16);
+                            blue = parseInt(hex.slice(4, 6), 16);
+                            if (hex.length === 8) alpha = parseInt(hex.slice(6, 8), 16) / 255;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        const rgbMatch = normalized.match(/^rgba?\((.*)\)$/i);
+                        if (!rgbMatch) return false;
+
+                        const parts = rgbMatch[1].replace('/', ' ').split(/[,\s]+/).filter(Boolean);
+                        if (parts.length < 3) return false;
+
+                        const toChannel = (part: string) => part.endsWith('%')
+                            ? parseFloat(part) * 2.55
+                            : parseFloat(part);
+                        red = toChannel(parts[0]);
+                        green = toChannel(parts[1]);
+                        blue = toChannel(parts[2]);
+                        if (parts[3] !== undefined) {
+                            alpha = parts[3].endsWith('%') ? parseFloat(parts[3]) / 100 : parseFloat(parts[3]);
+                        }
+                    }
+
+                    if (![red, green, blue, alpha].every(Number.isFinite)) return false;
+                    if (alpha === 0) return true;
+
+                    // 通道差很小的颜色属于白、灰、黑等中性色，通常是网页本身的底色。
+                    return Math.max(red, green, blue) - Math.min(red, green, blue) <= 12;
+                }
+
+                // 将颜色暂存为链接，绕过 HTML2BlockDOM 对 span 行内颜色的清理。
                 function color2link(html) {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
@@ -766,25 +832,35 @@ export default class PluginText extends Plugin {
                             return;
                         }
 
-                        const style = span.getAttribute('style');
-                        const colorMatch = style.match(/color\s*:\s*([^;]+)/i);
-                        const bgColorMatch = style.match(/background-color\s*:\s*([^;]+)/i) || style.match(/background\s*:\s*([^;]+)/i);
+                        const style = span.getAttribute('style') || '';
+                        const colorMatch = style.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i);
+                        const bgColorMatch = style.match(/(?:^|;)\s*background-color\s*:\s*([^;]+)/i)
+                            || style.match(/(?:^|;)\s*background\s*:\s*([^;]+)/i);
+                        const backgroundColor = bgColorMatch?.[1]?.trim().split(';')[0];
+                        const hasSemanticHighlight = !!span.closest('mark')
+                            || /(?:^|\s)(?:mark|highlight)(?:\s|$)/i.test(span.getAttribute('data-type') || '')
+                            || /(?:^|[-_\s])highlight(?:[-_\s]|$)/i.test(span.getAttribute('class') || '');
+                        const keepBackgroundColor = !!backgroundColor && (
+                            isOfficeRichText
+                            || hasSemanticHighlight
+                            || !isNeutralBackgroundColor(backgroundColor)
+                        );
 
-                        if (colorMatch || bgColorMatch) {
+                        if (colorMatch || keepBackgroundColor) {
                             // 创建 <a> 元素
                             const a = doc.createElement('a');
+                            let temporaryStyle = '';
 
                             if (colorMatch) {
                                 let color = colorMatch[1].trim();
                                 color = color.split(';')[0]; // 清理颜色值
-                                a.href += `color:${color};`;
+                                temporaryStyle += `color:${color};`;
                             }
 
-                            if (bgColorMatch) {
-                                let bgColor = bgColorMatch[1].trim();
-                                bgColor = bgColor.split(';')[0]; // 清理颜色值
-                                a.href += "background-color:" + bgColor + ";";
+                            if (keepBackgroundColor) {
+                                temporaryStyle += `background-color:${backgroundColor};`;
                             }
+                            a.setAttribute('href', temporaryStyle);
 
                             // 将 span 的所有子节点移动到 a 元素中
                             while (span.firstChild) {
@@ -975,7 +1051,10 @@ export default class PluginText extends Plugin {
                 // html = null;
 
             }
-            checkChange((this.i18n.pasteOptions as any).preserveColors, "siyuan");
+            const preserveColorsLabel = isOfficeRichText
+                ? (this.i18n.pasteOptions as any).preserveOfficeColors
+                : (this.i18n.pasteOptions as any).preserveOtherColors;
+            checkChange(preserveColorsLabel, "siyuan");
         }
 
         event.detail.resolve({
@@ -1014,12 +1093,19 @@ export default class PluginText extends Plugin {
                 this.toggleOption("pptList", detail);
             }
         });
-        // 添加保留Word颜色选项
+        // Office 与其他来源的富文本颜色分别控制
         menu.addItem({
-            icon: this.data[STORAGE_NAME].preserveColors ? "iconSelect" : "iconClose",
-            label: this.i18n.pasteOptions.preserveColors,
+            icon: this.data[STORAGE_NAME].preserveOfficeColors ? "iconSelect" : "iconClose",
+            label: (this.i18n.pasteOptions as any).preserveOfficeColors,
             click: (detail, event) => {
-                this.toggleOption("preserveColors", detail);
+                this.toggleOption("preserveOfficeColors", detail);
+            }
+        });
+        menu.addItem({
+            icon: this.data[STORAGE_NAME].preserveOtherColors ? "iconSelect" : "iconClose",
+            label: (this.i18n.pasteOptions as any).preserveOtherColors,
+            click: (detail, event) => {
+                this.toggleOption("preserveOtherColors", detail);
             }
         });
         menu.addItem({
