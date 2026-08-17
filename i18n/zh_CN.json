@@ -50,6 +50,8 @@
             "cancel": "取消"
         },
         "convertReference": "块引转超链接",
+        "punctuationProcessing": "标点符号处理",
+        "imageProcessing": "图片处理",
         "fullWidthToHalfWidth": "全角转半角"
     },
     "messages": {

@@ -430,9 +430,13 @@ export async function readDir(path: string): Promise<IResReadDir> {
 
 // **************************************** Export ****************************************
 
-export async function exportMdContent(id: DocumentId): Promise<IResExportMdContent> {
+export async function exportMdContent(
+    id: DocumentId | BlockId,
+    options: { yfm?: boolean; addTitle?: boolean } = {}
+): Promise<IResExportMdContent> {
     let data = {
-        id: id
+        id: id,
+        ...options
     }
     let url = '/api/export/exportMdContent';
     return request(url, data);

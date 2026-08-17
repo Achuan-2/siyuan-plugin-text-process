@@ -50,6 +50,8 @@
             "cancel": "Cancel"
         },
         "convertReference": "Convert Block Reference to Link",
+        "punctuationProcessing": "Punctuation Processing",
+        "imageProcessing": "Image Processing",
         "fullWidthToHalfWidth": "Full-width to Half-width"
     },
     "messages": {

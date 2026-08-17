@@ -20,7 +20,7 @@ import {
     platformUtils
 } from "siyuan";
 
-import { appendBlock, deleteBlock, setBlockAttrs, getBlockAttrs, pushMsg, pushErrMsg, sql, refreshSql, renderSprig, getChildBlocks, insertBlock, renameDocByID, prependBlock, updateBlock, createDocWithMd, getDoc, getBlockKramdown, getBlockDOM, exportPreview } from "./api";
+import { appendBlock, deleteBlock, setBlockAttrs, getBlockAttrs, pushMsg, pushErrMsg, sql, refreshSql, renderSprig, getChildBlocks, insertBlock, renameDocByID, prependBlock, updateBlock, createDocWithMd, getDoc, getBlockKramdown, getBlockDOM, exportMdContent } from "./api";
 import "@/index.scss";
 
 
@@ -1805,32 +1805,6 @@ export default class PluginText extends Plugin {
                 }
             }
         });
-        menuItems.push({
-            label: (this.i18n.blockOperations as any).autoLink,
-            click: async () => {
-                let protyle = detail.protyle;
-                try {
-                    for (const block of detail.blockElements) {
-                        const blockId = block.dataset.nodeId;
-                        const blockHTML = block.outerHTML;
-                        if (blockHTML) {
-                            const urlRegex = /<[^>]+>|(?<![\[\(])(https?:\/\/[^\s\u4e00-\u9fa5<">]+)(?![\]\)])/g;
-                            const updatedContent = blockHTML.replace(urlRegex, (match, url) => {
-                                if (url) return `<span data-type="a" data-href="${url}">${url}</span>`;
-                                return match;
-                            });
-                            if (updatedContent !== blockHTML) {
-                                await updateBlock('dom', updatedContent, blockId);
-                                protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error auto linking:', e);
-                }
-            }
-        });
-
         // Add new menu item for removing spaces
         menuItems.push({
             label: this.i18n.blockOperations.removeSpaces,
@@ -2434,11 +2408,12 @@ export default class PluginText extends Plugin {
                 try {
                     let combinedHTML = '';
                     for (const block of detail.blockElements) {
-                        // Use the export preview API to get the HTML for the block
+                        // Export only the selected block and explicitly omit the document title.
                         const blockId = block.dataset.nodeId;
                         try {
-                            const res: any = await exportPreview(blockId);
-                            let html = res && res.html ? res.html : '';
+                            const res = await exportMdContent(blockId, { yfm: false, addTitle: false });
+                            const markdown = res?.content || '';
+                            let html = markdown ? window.Lute.New().MarkdownStr('', markdown) : '';
                             if (!html) continue;
 
                             // Parse the HTML and convert <span data-type="strong" ...> to <strong ...>
@@ -2507,7 +2482,7 @@ export default class PluginText extends Plugin {
                             // Append processed HTML
                             combinedHTML += doc.body.innerHTML + '\n';
                         } catch (err) {
-                            console.error('Error fetching preview for block', block.dataset.nodeId, err);
+                            console.error('Error exporting rich text for block', block.dataset.nodeId, err);
                         }
                     }
 
@@ -2528,6 +2503,47 @@ export default class PluginText extends Plugin {
                 }
             }
         });
+
+        const groupMenuItems = (labels: string[], groupLabel: string) => {
+            const indexes = labels
+                .map(label => menuItems.findIndex(item => item.label === label))
+                .filter(index => index >= 0);
+            if (indexes.length === 0) return;
+
+            const insertionIndex = Math.min(...indexes);
+            const groupedItems = labels
+                .map(label => menuItems.find(item => item.label === label))
+                .filter(Boolean);
+            indexes.sort((a, b) => b - a).forEach(index => menuItems.splice(index, 1));
+            menuItems.splice(insertionIndex, 0, {
+                label: groupLabel,
+                submenu: groupedItems
+            });
+        };
+
+        const moveMenuItemAfter = (label: string, targetLabel: string) => {
+            const itemIndex = menuItems.findIndex(item => item.label === label);
+            if (itemIndex < 0) return;
+            const [item] = menuItems.splice(itemIndex, 1);
+            const targetIndex = menuItems.findIndex(menuItem => menuItem.label === targetLabel);
+            menuItems.splice(targetIndex >= 0 ? targetIndex + 1 : menuItems.length, 0, item);
+        };
+
+        groupMenuItems([
+            '英文符号转中文符号',
+            this.i18n.blockOperations.convertChineseToEnglish,
+            this.i18n.blockOperations.fullWidthToHalfWidth,
+            '半角转全角'
+        ], this.i18n.blockOperations.punctuationProcessing);
+        groupMenuItems([
+            this.i18n.blockOperations.adjustImageWidth,
+            this.i18n.blockOperations.adjustImageHeight
+        ], this.i18n.blockOperations.imageProcessing);
+        moveMenuItemAfter(
+            this.i18n.blockOperations.convertReference,
+            this.i18n.blockOperations.removeLinks
+        );
+        moveMenuItemAfter('复制为富文本', this.i18n.blockOperations.copyMultiLevel);
 
         // Add new menu item for multi-level list copying
         menu.addItem({
