@@ -26,18 +26,83 @@ import "@/index.scss";
 
 import { SettingUtils } from "./libs/setting-utils";
 import { convertOfficeListToHtml } from "./utils/list-converter";
-import { convertLatexMath } from "./utils/latex-converter";
+import {
+    convertLatexMath,
+    extractWordMath,
+    shouldUseOfficeMathBlock,
+    WordMathConversionResult,
+} from "./utils/latex-converter";
+import { readNativeOfficeMathHTML } from "./utils/office-clipboard";
 
 const STORAGE_NAME = "config";
 const SETTINGS_NAME = "settings";
+const OFFICE_MATH_HTML = /(?:<m:oMath(?:Para)?\b|msEquation)/i;
+
+function restoreOfficeMathBlockDOM(
+    blockDOM: string,
+    formulas: WordMathConversionResult["formulas"],
+    lute: any,
+    inlineAll = false,
+): string {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(blockDOM, "text/html");
+
+    formulas.forEach(({ token, markdown }) => {
+        const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+        let tokenNode: Text | undefined;
+        while (walker.nextNode()) {
+            if (walker.currentNode.textContent?.includes(token)) {
+                tokenNode = walker.currentNode as Text;
+                break;
+            }
+        }
+        if (!tokenNode || !tokenNode.parentElement) {
+            return;
+        }
+
+        const blockElement = tokenNode.parentElement.closest<HTMLElement>("[data-type^='Node']");
+        const latex = markdown.replace(/^\$\$\s*|\s*\$\$$/g, "").replace(/^\$|\$$/g, "");
+        if (blockElement && shouldUseOfficeMathBlock(blockElement.textContent, token, inlineAll)) {
+            const displayMarkdown = `$$\n${latex}\n$$`;
+            const formulaDoc = parser.parseFromString(lute.Md2BlockDOM(displayMarkdown), "text/html");
+            const formulaBlocks = Array.from(formulaDoc.body.children).map(item => item.cloneNode(true));
+            if (formulaBlocks.length > 0) {
+                blockElement.replaceWith(...formulaBlocks);
+                return;
+            }
+        }
+
+        const mathElement = doc.createElement("span");
+        mathElement.setAttribute("data-type", "inline-math");
+        mathElement.setAttribute("data-subtype", "math");
+        mathElement.setAttribute("data-content", latex);
+        mathElement.textContent = latex;
+
+        const content = tokenNode.textContent || "";
+        const tokenIndex = content.indexOf(token);
+        const fragment = doc.createDocumentFragment();
+        if (tokenIndex > 0) {
+            fragment.append(content.slice(0, tokenIndex));
+        }
+        fragment.append(mathElement);
+        if (tokenIndex + token.length < content.length) {
+            fragment.append(content.slice(tokenIndex + token.length));
+        }
+        tokenNode.replaceWith(fragment);
+    });
+
+    return doc.body.innerHTML;
+}
 
 export default class PluginText extends Plugin {
     private isMobile: boolean;
     private settingUtils: SettingUtils;
     private topBarElement: HTMLElement;
     private readonly boundPasteHandler = this.eventBusPaste.bind(this);
+    private readonly boundNativePasteHandler = this.captureNativeOfficeMathPaste.bind(this);
     private readonly boundBlockMenuHandler = this.handleBlockMenu.bind(this);
     private readonly boundContentMenuHandler = this.handleContentMenu.bind(this);
+    private nativeOfficeMathPaste?: { html: string, capturedAt: number };
 
     async onload() {
         const frontEnd = getFrontend();
@@ -95,6 +160,8 @@ export default class PluginText extends Plugin {
             description: this.i18n.settings.copyHeadingSymbol.description,
         });
         await this.settingUtils.load(); //导入配置并合并
+        // 在思源清理 Office HTML 前记录公式标记，插件事件收到的 HTML 已不包含条件注释中的 OMML。
+        document.addEventListener("paste", this.boundNativePasteHandler, true);
         // 监听粘贴事件
         this.eventBus.on("paste", this.boundPasteHandler);
         const topBarElement = this.addTopBar({
@@ -132,6 +199,7 @@ export default class PluginText extends Plugin {
     }
 
     async onunload() {
+        document.removeEventListener("paste", this.boundNativePasteHandler, true);
         this.eventBus.off("paste", this.boundPasteHandler);
         this.eventBus.off('click-blockicon', this.boundBlockMenuHandler);
         this.eventBus.off('open-menu-content', this.boundContentMenuHandler);
@@ -140,6 +208,7 @@ export default class PluginText extends Plugin {
 
 
     uninstall() {
+        document.removeEventListener("paste", this.boundNativePasteHandler, true);
         this.eventBus.off("paste", this.boundPasteHandler);
         this.eventBus.off('click-blockicon', this.boundBlockMenuHandler);
         this.eventBus.off('open-menu-content', this.boundContentMenuHandler);
@@ -625,11 +694,48 @@ export default class PluginText extends Plugin {
         }).join('\n');
     }
 
+    private captureNativeOfficeMathPaste(event: ClipboardEvent) {
+        const html = event.clipboardData?.getData("text/html") || "";
+        if (!OFFICE_MATH_HTML.test(html)) {
+            this.nativeOfficeMathPaste = undefined;
+            return;
+        }
+        this.nativeOfficeMathPaste = {
+            html,
+            capturedAt: Date.now(),
+        };
+    }
+
+    private takeNativeOfficeMathPaste(textPlain: string): string {
+        const captured = this.nativeOfficeMathPaste;
+        this.nativeOfficeMathPaste = undefined;
+        const capturedHTML = captured && Date.now() - captured.capturedAt < 5000 ? captured.html : "";
+        // ClipboardEvent 中的 HTML 可能已被 Chromium 清理，桌面端直接读取 Windows 原生 HTML Format。
+        return readNativeOfficeMathHTML(textPlain, capturedHTML);
+    }
+
     private eventBusPaste(event: any) {
         let text = event.detail.textPlain;
         let html = event.detail.textHTML;
         let siyuan = event.detail.siyuanHTML;
-        const files = event.detail.files;
+        let files = event.detail.files;
+
+        const nativeOfficeMathHTML = this.takeNativeOfficeMathPaste(text);
+        const officeMath = nativeOfficeMathHTML ? extractWordMath(nativeOfficeMathHTML, {
+            inlineAll: this.data[STORAGE_NAME].inlineLatex,
+        }) : null;
+        // 不保留颜色时由思源本体处理原始 OMML；保留颜色时使用占位符合并公式和普通富文本。
+        if (nativeOfficeMathHTML && !this.data[STORAGE_NAME].preserveOfficeColors) {
+            return;
+        }
+        if (nativeOfficeMathHTML && !officeMath) {
+            return;
+        }
+        if (officeMath) {
+            html = officeMath.html;
+            // Office 还可能提供公式预览图片，转换为可编辑公式后不再上传这些回退文件。
+            files = [];
+        }
 
         // 剪贴板只有文件（如截图、复制的文件）且没有文本内容时，交给思源默认处理。
         // 自 siyuan-note/siyuan@5a9761f 起，插件 resolve 的返回值被当作完整剪贴板载荷，
@@ -638,10 +744,6 @@ export default class PluginText extends Plugin {
         if (hasFiles && !text && !html && !siyuan) {
             return;
         }
-
-        // 如果需异步处理请调用 preventDefault， 否则会进行默认处理
-        event.preventDefault();
-        // 如果使用了 preventDefault，必须调用 resolve，否则程序会卡死
 
         const processedOps: string[] = [];
         let lastText = text;
@@ -777,7 +879,7 @@ export default class PluginText extends Plugin {
         }
 
         // Office 和其他来源的富文本颜色可分别控制。
-        const isOfficeRichText = /(?:mso-|urn:schemas-microsoft-com:office|<o:p\b|xmlns:o\s*=|Microsoft\s+(?:Word|Excel|PowerPoint))/i.test(html);
+        const isOfficeRichText = !!officeMath || /(?:mso-|urn:schemas-microsoft-com:office|<o:p\b|xmlns:o\s*=|Microsoft\s+(?:Word|Excel|PowerPoint))/i.test(html);
         const preserveRichTextColors = isOfficeRichText
             ? this.data[STORAGE_NAME].preserveOfficeColors
             : this.data[STORAGE_NAME].preserveOtherColors;
@@ -1071,6 +1173,14 @@ export default class PluginText extends Plugin {
 
                 console.log(result);
                 result = processColorLinks(result);
+                if (officeMath) {
+                    result = restoreOfficeMathBlockDOM(
+                        result,
+                        officeMath.formulas,
+                        lute,
+                        this.data[STORAGE_NAME].inlineLatex,
+                    );
+                }
                 console.log(result);
                 siyuan = result;
                 // html = null;
@@ -1082,6 +1192,13 @@ export default class PluginText extends Plugin {
             checkChange(preserveColorsLabel, "siyuan");
         }
 
+        // 未实际修改剪贴板时交给思源默认处理，保留本体预先读取的 Office 公式等原生数据。
+        if (processedOps.length === 0) {
+            return;
+        }
+
+        // 插件实际修改内容时才接管粘贴；调用 preventDefault 后必须调用 resolve。
+        event.preventDefault();
         event.detail.resolve({
             textPlain: text,
             textHTML: html,
