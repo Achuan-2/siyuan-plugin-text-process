@@ -32,7 +32,7 @@ import {
     shouldUseOfficeMathBlock,
     WordMathConversionResult,
 } from "./utils/latex-converter";
-import { readNativeOfficeMathHTML } from "./utils/office-clipboard";
+import { isOfficeHTML, readNativeOfficeMathHTML } from "./utils/office-clipboard";
 
 const STORAGE_NAME = "config";
 const SETTINGS_NAME = "settings";
@@ -879,7 +879,7 @@ export default class PluginText extends Plugin {
         }
 
         // Office 和其他来源的富文本颜色可分别控制。
-        const isOfficeRichText = !!officeMath || /(?:mso-|urn:schemas-microsoft-com:office|<o:p\b|xmlns:o\s*=|Microsoft\s+(?:Word|Excel|PowerPoint))/i.test(html);
+        const isOfficeRichText = isOfficeHTML(html, officeMath);
         const preserveRichTextColors = isOfficeRichText
             ? this.data[STORAGE_NAME].preserveOfficeColors
             : this.data[STORAGE_NAME].preserveOtherColors;
@@ -893,7 +893,7 @@ export default class PluginText extends Plugin {
                 // 写入整个选区。它不是用户主动设置的高亮，不应进入思源文本样式。
                 function isNeutralBackgroundColor(value: string): boolean {
                     const normalized = value.trim().toLowerCase();
-                    if (['transparent', 'white', 'black', 'whitesmoke', 'snow', 'gray', 'grey'].includes(normalized)) {
+                    if (['transparent', 'none', 'initial', 'inherit', 'unset', 'white', 'black', 'whitesmoke', 'snow', 'gray', 'grey'].includes(normalized)) {
                         return true;
                     }
 
@@ -963,7 +963,14 @@ export default class PluginText extends Plugin {
                         const colorMatch = style.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i);
                         const bgColorMatch = style.match(/(?:^|;)\s*background-color\s*:\s*([^;]+)/i)
                             || style.match(/(?:^|;)\s*background\s*:\s*([^;]+)/i);
-                        const backgroundColor = bgColorMatch?.[1]?.trim().split(';')[0];
+                        const rawBackgroundColor = bgColorMatch?.[1]?.trim().split(';')[0];
+                        let backgroundColor: string | undefined;
+                        if (rawBackgroundColor) {
+                            const hex = rawBackgroundColor.match(/#([0-9a-f]{3,8})\b/i);
+                            const funcColor = rawBackgroundColor.match(/rgba?\([^)]+\)|hsla?\([^)]+\)/i);
+                            const firstWord = rawBackgroundColor.split(/\s+/)[0];
+                            backgroundColor = hex ? hex[0] : (funcColor ? funcColor[0] : firstWord);
+                        }
                         const hasSemanticHighlight = !!span.closest('mark')
                             || /(?:^|\s)(?:mark|highlight)(?:\s|$)/i.test(span.getAttribute('data-type') || '')
                             || /(?:^|[-_\s])highlight(?:[-_\s]|$)/i.test(span.getAttribute('class') || '');
