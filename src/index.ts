@@ -278,6 +278,20 @@ export default class PluginText extends Plugin {
         return result;
     }
 
+    private removeNewlinesAndSpacesFromText(text: string): string {
+        const whitespacePattern = /[\s\u00a0\u200b\u202f\u3000]+/g;
+        return text.replace(whitespacePattern, (match, offset, source) => {
+            const previousCharacters = source.slice(0, offset).match(/[^\s\u00a0\u200b\u202f\u3000]/g);
+            const previousCharacter = previousCharacters?.[previousCharacters.length - 1] || '';
+            const nextCharacter = source.slice(offset + match.length).match(/[^\s\u00a0\u200b\u202f\u3000]/)?.[0] || '';
+            if (!previousCharacter || !nextCharacter) return '';
+
+            const isPreviousChinese = /[^\x00-\xff]/.test(previousCharacter);
+            const isNextChinese = /[^\x00-\xff]/.test(nextCharacter);
+            return isPreviousChinese && isNextChinese ? '' : ' ';
+        });
+    }
+
     private removeSuperscriptInRange(range: Range): boolean {
         if (!range || range.collapsed) return false;
 
@@ -425,6 +439,25 @@ export default class PluginText extends Plugin {
                     }
 
                     text = text.replace(/[^\S\n]/g, '');
+                    range.insertNode(document.createTextNode(text));
+
+                    if (protyle?.wysiwyg?.element) {
+                        this.saveViaTransaction(protyle.wysiwyg.element);
+                    }
+                }
+            });
+
+            menu.addItem({
+                icon: "iconPaste",
+                label: (this.i18n as any).pasteAndRemoveNewlinesAndSpaces,
+                click: async () => {
+                    let text = await platformUtils.readText();
+                    if (typeof text !== 'string' || !text) {
+                        showMessage((this.i18n as any).messages.clipboardEmpty);
+                        return;
+                    }
+
+                    text = this.removeNewlinesAndSpacesFromText(text);
                     range.insertNode(document.createTextNode(text));
 
                     if (protyle?.wysiwyg?.element) {
@@ -1344,6 +1377,75 @@ export default class PluginText extends Plugin {
         const hasActiveOption = Object.values(this.data[STORAGE_NAME]).some(value => value === true);
         this.topBarElement.style.backgroundColor = hasActiveOption ? "var(--b3-toolbar-hover)" : "";
     }
+
+    private removeBlockSpaces(blockHTML: string): string {
+        return blockHTML
+            .replace(/([^\x00-\xff])\s+([^\x00-\xff])/g, '$1$2')
+            .replace(/\s+/g, ' ');
+    }
+
+    private removeBlockNewlines(blockHTML: string): string {
+        return blockHTML
+            .replace(/<br\s*\/?>(?=[a-zA-Z])/g, ' ')
+            .replace(/<br\s*\/?>/g, '')
+            .replace(/<\/p>\s*<p[^>]*>/g, '')
+            .replace(/\n(?=[a-zA-Z])/g, ' ')
+            .replace(/\n/g, '');
+    }
+
+    private removeBlockNewlinesAndSpaces(blockHTML: string): string {
+        const container = document.createElement('div');
+        container.innerHTML = blockHTML;
+        const blockElement = container.firstElementChild;
+        if (!blockElement) return blockHTML;
+
+        blockElement.querySelectorAll('br').forEach(br => {
+            br.replaceWith(document.createTextNode('\n'));
+        });
+
+        const walker = document.createTreeWalker(blockElement, NodeFilter.SHOW_TEXT);
+        const textNodes: Text[] = [];
+        while (walker.nextNode()) {
+            textNodes.push(walker.currentNode as Text);
+        }
+        const originalValues = textNodes.map(node => node.nodeValue || '');
+        const whitespacePattern = /[\s\u00a0\u200b\u202f\u3000]+/g;
+
+        const findPreviousCharacter = (nodeIndex: number, offset: number): string => {
+            for (let index = nodeIndex; index >= 0; index--) {
+                const value = originalValues[index];
+                const end = index === nodeIndex ? offset : value.length;
+                const characters = value.slice(0, end).match(/[^\s\u00a0\u200b\u202f\u3000]/g);
+                if (characters?.length) return characters[characters.length - 1];
+            }
+            return '';
+        };
+
+        const findNextCharacter = (nodeIndex: number, offset: number): string => {
+            for (let index = nodeIndex; index < originalValues.length; index++) {
+                const value = originalValues[index];
+                const start = index === nodeIndex ? offset : 0;
+                const character = value.slice(start).match(/[^\s\u00a0\u200b\u202f\u3000]/)?.[0];
+                if (character) return character;
+            }
+            return '';
+        };
+
+        textNodes.forEach((node, nodeIndex) => {
+            node.nodeValue = originalValues[nodeIndex].replace(whitespacePattern, (match, offset) => {
+                const previousCharacter = findPreviousCharacter(nodeIndex, offset);
+                const nextCharacter = findNextCharacter(nodeIndex, offset + match.length);
+                if (!previousCharacter || !nextCharacter) return '';
+
+                const isPreviousChinese = /[^\x00-\xff]/.test(previousCharacter);
+                const isNextChinese = /[^\x00-\xff]/.test(nextCharacter);
+                return isPreviousChinese && isNextChinese ? '' : ' ';
+            });
+        });
+
+        return blockElement.outerHTML;
+    }
+
     private async handleBlockMenu({ detail }) {
         let menu = detail.menu;
         const menuItems = [];
@@ -1822,12 +1924,8 @@ export default class PluginText extends Plugin {
                         const blockId = block.dataset.nodeId;
                         const blockHTML = block.outerHTML;
                         if (blockHTML) {
-                            // Skip block reference patterns and embeds 
-                            let updatedContent = blockHTML;
                             // Remove spaces between Chinese characters but keep other necessary spaces
-                            updatedContent = blockHTML.replace(/([^\x00-\xff])\s+([^\x00-\xff])/g, '$1$2');
-                            // Remove extra spaces between words
-                            updatedContent = updatedContent.replace(/\s+/g, ' ');
+                            const updatedContent = this.removeBlockSpaces(blockHTML);
                             if (updatedContent !== blockHTML) {
                                 await updateBlock('dom', updatedContent, blockId);
                                 protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
@@ -1849,10 +1947,7 @@ export default class PluginText extends Plugin {
                         const blockId = block.dataset.nodeId;
                         const blockHTML = block.outerHTML;
                         if (blockHTML) {
-                            // Remove br tags and merge p tags
-                            let updatedContent = blockHTML.replace(/<br\s*\/?>(?=[a-zA-Z])/g, ' ').replace(/<br\s*\/?>/g, '')
-                                .replace(/<\/p>\s*<p[^>]*>/g, '')
-                                .replace(/\n(?=[a-zA-Z])/g, ' ').replace(/\n/g, '');
+                            const updatedContent = this.removeBlockNewlines(blockHTML);
                             if (updatedContent !== blockHTML) {
                                 await updateBlock('dom', updatedContent, blockId);
                                 protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
@@ -1861,6 +1956,28 @@ export default class PluginText extends Plugin {
                     }
                 } catch (e) {
                     console.error('Error removing newlines:', e);
+                }
+            }
+        });
+
+        menuItems.push({
+            label: this.i18n.blockOperations.removeNewlinesAndSpaces,
+            click: async () => {
+                let protyle = detail.protyle;
+                try {
+                    for (const block of detail.blockElements) {
+                        const blockId = block.dataset.nodeId;
+                        const blockHTML = block.outerHTML;
+                        if (blockHTML) {
+                            const updatedContent = this.removeBlockNewlinesAndSpaces(blockHTML);
+                            if (updatedContent !== blockHTML) {
+                                await updateBlock('dom', updatedContent, blockId);
+                                protyle.getInstance().updateTransaction(blockId, updatedContent, blockHTML);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error removing newlines and spaces:', e);
                 }
             }
         });

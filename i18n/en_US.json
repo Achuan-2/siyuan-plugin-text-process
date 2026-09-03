@@ -27,6 +27,7 @@
         "autoLink": "Auto Link Recognition",
         "removeSpaces": "Remove Spaces",
         "removeNewlines": "Remove Newlines",
+        "removeNewlinesAndSpaces": "Remove Newlines and Spaces",
         "convertChineseToEnglish": "Convert Chinese Punctuation to English",
         "adjustImageWidth": "Adjust Image Width",
         "imageWidthDialog": {
@@ -80,6 +81,7 @@
     },
     "pasteAndRemoveNewlines": "Paste and Remove Newlines",
     "pasteAndRemoveSpaces": "Paste and Remove Spaces",
+    "pasteAndRemoveNewlinesAndSpaces": "Paste and Remove Newlines and Spaces",
     "adjustHeading": "Adjust Clipboard Markdown Heading Level",
     "headingNone": "No Heading (Convert to Bold)",
     "headingLevel": "Heading ${level}"
