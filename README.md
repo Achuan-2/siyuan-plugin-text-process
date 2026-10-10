@@ -48,10 +48,8 @@ The plugin adds the following buttons to the block menu:
   ![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/PixPin_2024-12-15_10-55-21-2024-12-15.png)
   ![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/PixPin_2024-12-15_10-56-09-2024-12-15.png)
 
-## ❤️ Support
+## ❤️ Tips Are Welcome
 
-If you like my plugin, please star the GitHub repository and consider making a donation. This will motivate me to continue improving this plugin and developing new ones.
+If you find this plugin useful, you're welcome to leave a tip or give the repository a star on GitHub. Your support helps me maintain and improve this plugin and develop new ones. Thank you for your support!
 
-![](https://fastly.jsdelivr.net/gh/Achuan-2/PicBed/assets/20241118182532-2024-11-18.png)
-
-For the list of donors, please visit: https://www.yuque.com/achuan-2
+[Leave a tip](https://pancake.waffo.ai/store/achuan-2-fdbho4ye/product/PROD_3F7Aa7c2NQlz9KmxcgxjQ7?type=onetime&currency=USD)
